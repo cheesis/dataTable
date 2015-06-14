@@ -61,6 +61,8 @@ function formatNumber(d) {
           , {columnName:"bs",displayName:"Buy/Sell"}
           , {columnName:"avgPrice",displayName:"Average Price"}
           , {columnName:"quantity",displayName:"Quantity"}
+          , {columnName:"tradedValue",displayName:"Traded Value", calc:tradedValue}
+          , {columnName:"pctOfValue",displayName:"% of program value", calc:pctOfValue}
       ]
   };
   var vwap_columns = {
@@ -77,15 +79,24 @@ function formatNumber(d) {
 
   //columns that should have a value in the footer
   var sot_foot = [{columnName:"quantity", calc:fsumQuantity}, // we need named functions if we want to define them after this
-                  {columnName:"avgPrice", calc:fAvgPrice}
+                  {columnName:"avgPrice", calc:fAvgPrice},
+                  {columnName:"tradedValue", calc:tradedValue}
                  ];
   var sot_foot_vwap = [
-    {columnName:"vwapPnL", calc:fsumVWAPPnL}
+    {columnName:"vwapPnL", calc:fsumVWAPPnL},
+    {columnName:"vwapPnLbps", calc:fVWAPPnLbps}
   ];
 
   // add the vwap footer values
   sot_foot = [].concat(sot_foot, sot_foot_vwap);
 
+  function tradedValue(things) {
+    return things.getColInRow("avgPrice") * things.getColInRow("quantity");
+  }
+  function pctOfValue(things) {
+    var totalValue = things.getColInFootRow("avgPrice") * things.getColInFootRow("quantity");
+    return things.getColInRow("tradedValue") / totalValue * 100;
+  }
   function participation(things) {
       return things.getColInRow("quantity")/things.getColInRow("vwapVolume")*100;
   }
@@ -103,10 +114,10 @@ function formatNumber(d) {
     return things.getColInRow("quantity") * difference;
   }
   function pnlbps(things) {
-    // return parseFloat(row.cells[cols.indexOf("vwapPnL")].innerHTML) / (
-    //   parseFloat(row.cells[cols.indexOf("avgPrice")].__data__) * parseFloat(row.cells[cols.indexOf("quantity")].__data__)
-    // ) * 10000;
-    things.getColInRow("vwapPnL")
+    return things.getColInRow("vwapPnL") / (things.getColInRow("avgPrice") * things.getColInRow("quantity")) * 10000;
+  }
+  function fVWAPPnLbps(things) {
+    return things.getColInFootRow("vwapPnL") / (things.getColInFootRow("avgPrice") * things.getColInFootRow("quantity")) * 10000;
   }
 
   function fsumQuantity(things) {
@@ -150,7 +161,10 @@ function formatNumber(d) {
   myTable.populate(bm_data);
   // adds more data after the given time
   setTimeout(function(){ myTable.populate(later_bm_data); }, 3000);
-  setTimeout(function(){ myTable.populate([{oid:"oim1", avgPrice:12.5, quantity:5000, bs:"B"}]);}, 5000);
+  setTimeout(function(){
+    myTable.populate([{oid:"oim1", avgPrice:12.5, quantity:5000, bs:"B"}]);
+    myTable.populate([]);
+  }, 5000);
 
 
 </script>
@@ -176,32 +190,43 @@ var st_right = {
     ]
 };
 function countOrders(things) {
-  // var bs = Array.prototype.slice.call(document.querySelectorAll('#sot [data-column-name="bs"]'));
-  // switch (row.cells[cols.indexOf("id")].__data__) {
-  //   case 'Buy':
-  //     return bs.filter(function(value) { return value.innerHTML == "B" }).length;
-  //   case 'Sell':
-  //     return bs.filter(function(value) { return value.innerHTML == "S" }).length;
-  //   default:
-  //     console.log('neither buy nor sell, wtf?');
-  // }
+  // we refer to a different table so we have to use dataTableSelector functions directly
+  // instead of the helper functions of the passed 'things' object
+  var sides = dataTableSelector.columnSelector("sot", "bs");
+  switch (things.getColInRow("id")) {
+    case "Buy":
+      return sides.filter(function (a) {
+        return a == "B";
+      }).length;
+    case "Sell":
+        return sides.filter(function (a) {
+          return a == "S";
+        }).length;
+    default:
+      return "Oops, somebody can't code";
+  }
 }
 function calcNBV(things) {
-  // var quantityArr = Array.prototype.slice.call(document.querySelectorAll('#sot [data-column-name="quantity"]'));
-  // var avgPriceArr = Array.prototype.slice.call(document.querySelectorAll('#sot [data-column-name="avgPrice"]'));
-  // var bs = Array.prototype.slice.call(document.querySelectorAll('#sot [data-column-name="bs"]'));
-  // var buy_value = 0;
-  // var sell_value = 0;
-  // bs.forEach(function(d,i){
-  //     if (d.innerHTML == 'B'){
-  //         buy_value -= parseFloat(quantityArr[i].__data__) * parseFloat(avgPriceArr[i].__data__)
-  //     }
-  //     else if (d.innerHTML == 'S'){
-  //         sell_value += parseFloat(quantityArr[i].__data__) * parseFloat(avgPriceArr[i].__data__)
-  //     }
-  // });
-  // return 1;
+  var ourSide = things.getColInRow("id");
+  var sides = dataTableSelector.columnSelector("sot", "bs");
+  var tradedValue = dataTableSelector.columnSelector("sot", "tradedValue");
+  var tradedValueThisSide = tradedValue.filter(function(v,i){
+    return ourSide.indexOf(sides[i]) == 0; //javascript doesn't have startsWith yet
+  });
+  if (tradedValueThisSide.length > 0) {
+    var totalValue = tradedValueThisSide.reduce(function(a, b){return a+b;});
+    if (ourSide == "Sell") {
+      return totalValue;
+    } else if(ourSide == "Buy"){
+      return totalValue * (-1);
+    } else {
+      return "Oops, somebody can't code";
+    }
+  } else {
+    return 0;
+  }
 }
+
 var st_data = [
    {id:"Buy"},
    {id:"Sell"}
@@ -211,10 +236,10 @@ var st_data = [
                ];
 
  function fNBV(things) {
-    //  return footerGeneralSum("nbv", tableRef, cols);
+   return things.getCol("nbv").reduce(function(a, b){return a+b;});
  };
  function fCount(things) {
-    //  return footerGeneralSum("nbr", tableRef, cols);
+    return things.getCol("nbr").reduce(function(a, b){return a+b;});
  }
 
 var summaryTable = new dataTable("st",[st_left, st_right], "id", st_foot, formatNumber, ['sot']);

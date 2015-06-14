@@ -1,6 +1,21 @@
-// TODO
-// we have to pass a formatter for each column instead, not all numbers should ahve 4 decimals
-//only use parse float if all values are numbers
+/* TODO
+we have to pass a formatter for each column instead, not all numbers should ahve 4 decimals
+rewrite dataTableSelector as module pattern singleton to have private functions
+if you have column values that depend on a calculated footer value then you have to call populate (at lest) twice
+  once with the values that will populate the footer and then without values to recalculate the body values
+_addFooter is duplicate code of body population ... or so
+possibly make only columns editable where data is not calculated
+*/
+
+/*
+documentation
+===============
+in the calc functions of your columns the argument is an object containing the following functions:
+  getColInFootRow   arg: columnName;         returns: the value of the column in the foot row
+  getColInRow       arg: columnName;         returns: the value of the column in the same row you are in, either foot or body depending on where you are
+  getColInBodyRow   arg: row-id, columnName; returns: value of column in the given row
+  getCol            arg: columnName;         returns: values of body cells for given column as array
+*/
 
 function dataTable(tableId, columns, indexColumn, footer_definition, numberFormater, listenToTables){
   this._rowIndex = indexColumn;
@@ -96,6 +111,8 @@ dataTable.prototype._getRightBorderIndices = function(columns){
           var where = this._flatColumns.indexOf(d.columnName);
           var things = {
             getColInFootRow: dataTableSelector.colInFootRowSelector.bind(this, this._tableId),
+            getColInRow: dataTableSelector.colInFootRowSelector.bind(this, this._tableId),
+            getColInBodyRow: dataTableSelector.colInBodyRowSelector.bind(this, this._tableId),
             getCol: dataTableSelector.columnSelector.bind(this, this._tableId)
           };
           var calculatedValue = d.calc(things);
@@ -168,7 +185,9 @@ dataTable.prototype._getRightBorderIndices = function(columns){
                   var columnIndex = this._flatColumns.indexOf(column.columnName);
                   for (i = 0; i < bodyrows.length; i++) {
                     var things = {
+                      getColInFootRow: dataTableSelector.colInFootRowSelector.bind(this, this._tableId),
                       getColInRow: dataTableSelector.colInBodyRowSelector.bind(this, this._tableId, bodyrows[i].dataset.id),
+                      getColInBodyRow: dataTableSelector.colInBodyRowSelector.bind(this, this._tableId),
                       getCol: dataTableSelector.columnSelector.bind(this, this._tableId)
                     };
                     var calculatedValue = column.calc(things);
