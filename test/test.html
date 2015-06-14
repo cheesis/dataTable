@@ -1,0 +1,288 @@
+<!DOCTYPE html>
+<html>
+<head>
+<link rel="stylesheet" type="text/css" href="style2.css">
+<script src="numeral.js"></script>
+
+<script>
+// testing number formatting
+// load a language
+numeral.language('sv', {
+    delimiters: {
+        thousands: ' ',
+        decimal: ','
+    },
+    abbreviations: {
+        thousand: 'k',
+        million: 'm',
+        billion: 'b',
+        trillion: 't'
+    },
+    ordinal : function (number) {
+        return number === 1 ? 'e' : 'e';
+    },
+    currency: {
+        symbol: 'SEK'
+    }
+});
+
+// switch between languages
+numeral.language('sv');
+
+// from here http://stackoverflow.com/questions/5778020/check-whether-an-input-string-contains-number
+function isNumeric(n) {
+    return !isNaN(parseFloat(n)) && isFinite(n);
+}
+
+function formatNumber(d) {
+    if (isNumeric(d)) {
+        return numeral(d).format('0,0.0000');
+    }
+    else {
+        return d;
+    }
+}
+</script>
+<script src="..\table.js"></script>
+</head>
+<body>
+<table id="st"></table>
+<table id="sot"></table>
+
+<script type="text/javascript">
+/*
+    here we fill the sales order table
+*/
+  //names of columns in header
+  var sot_base = {
+      section: "",
+      columns: [
+            {columnName:"oid",displayName:"Sales Order Ids"}
+          , {columnName:"bs",displayName:"Buy/Sell"}
+          , {columnName:"avgPrice",displayName:"Average Price"}
+          , {columnName:"quantity",displayName:"Quantity"}
+      ]
+  };
+  var vwap_columns = {
+      section: "VWAP",
+      columns: [
+           {columnName:'vwapAvgPrice',displayName:'Average Price'}
+          ,{columnName:'vwapVolume',displayName:'Volume'}
+          ,{columnName:'vwapPart',displayName:'Participation', calc:participation}
+          ,{columnName:'vwapPnL',displayName:'P&L', calc:pnl}
+          ,{columnName:'vwapPnLbps',displayName:'P&L Bps', calc:pnlbps}
+      ]
+  };
+  var sot_definition = [sot_base, vwap_columns];
+
+  //columns that should have a value in the footer
+  var sot_foot = [{columnName:"quantity", calc:fsumQuantity}, // we need named functions if we want to define them after this
+                  {columnName:"avgPrice", calc:fAvgPrice}
+                 ];
+  var sot_foot_vwap = [
+    {columnName:"vwapPnL", calc:fsumVWAPPnL}
+  ];
+
+  // add the vwap footer values
+  sot_foot = [].concat(sot_foot, sot_foot_vwap);
+
+  function participation(things) {
+      return things.getColInRow("quantity")/things.getColInRow("vwapVolume")*100;
+  }
+  function pnl(things) {
+    var difference = 0;
+    if (things.getColInRow("bs") == "B") {
+      difference = things.getColInRow("vwapAvgPrice") - things.getColInRow("avgPrice");
+    } else if(things.getColInRow("bs") == "S"){
+      difference = things.getColInRow("avgPrice") - things.getColInRow("vwapAvgPrice");
+    }
+    else {
+      difference = 0;
+      console.log('buy/sell was neither b nor s in pnl(), it was ' + things.getColInRow("bs"));
+    }
+    return things.getColInRow("quantity") * difference;
+  }
+  function pnlbps(things) {
+    // return parseFloat(row.cells[cols.indexOf("vwapPnL")].innerHTML) / (
+    //   parseFloat(row.cells[cols.indexOf("avgPrice")].__data__) * parseFloat(row.cells[cols.indexOf("quantity")].__data__)
+    // ) * 10000;
+    things.getColInRow("vwapPnL")
+  }
+
+  function fsumQuantity(things) {
+      //this calculates the sum of the column values
+      return things.getCol("quantity").reduce(function(a, b){return a+b;});
+  };
+  function fsumVWAPPnL(things) {
+    return things.getCol("vwapPnL").reduce(function(a, b){return a+b;});
+  };
+
+  function fAvgPrice(things){
+      var quantities = things.getCol("quantity");
+      var prices = things.getCol("avgPrice");
+
+      //quantities * prices
+      var product = quantities.map(function(x, index){ //here x = quantities[index]
+        return prices[index] * x;
+      });
+
+      //sum(product)/sum(quantities)
+      return product.reduce(function(a, b){return a+b;}) /
+        quantities.reduce(function(a, b){return a+b;});
+  }
+
+  //sales order table data
+  var sotd = [
+      // {oid:"oim1", avgPrice:12.5, quantity:20000, bs:"B"},
+      {oid:"oim2", avgPrice:50.456, quantity:10000, bs:"S"},
+      {oid:"oim3", avgPrice:50.456, quantity:10000, bs:"S", NBV:1230}
+  ];
+  //we can't assume that we get the data back in the right order
+  var bm_data = [
+        {oid:"oim2",vwapAvgPrice:50, vwapVolume:50000}
+      , {oid:"oim3",vwapAvgPrice:60, vwapVolume:60000}
+  ];
+  var later_bm_data = [{oid:"oim1",vwapAvgPrice:12, vwapVolume:1000}];
+
+
+  var myTable = new dataTable("sot",sot_definition, "oid", sot_foot, formatNumber);
+  myTable.populate(sotd);
+  myTable.populate(bm_data);
+  // adds more data after the given time
+  setTimeout(function(){ myTable.populate(later_bm_data); }, 3000);
+  setTimeout(function(){ myTable.populate([{oid:"oim1", avgPrice:12.5, quantity:5000, bs:"B"}]);}, 5000);
+
+
+</script>
+<script type="text/javascript">
+/*
+    here we fill the summary table
+*/
+//names of columns in header
+var st_left = {
+    section: "",
+    columns: [
+          {
+            columnName:"id",
+            displayName:""
+          }
+    ]
+};
+var st_right = {
+    section: "",
+    columns: [
+      {columnName:"nbr",displayName:"Number", calc:countOrders}
+    , {columnName:"nbv",displayName:"NBV", calc:calcNBV}
+    ]
+};
+function countOrders(things) {
+  // var bs = Array.prototype.slice.call(document.querySelectorAll('#sot [data-column-name="bs"]'));
+  // switch (row.cells[cols.indexOf("id")].__data__) {
+  //   case 'Buy':
+  //     return bs.filter(function(value) { return value.innerHTML == "B" }).length;
+  //   case 'Sell':
+  //     return bs.filter(function(value) { return value.innerHTML == "S" }).length;
+  //   default:
+  //     console.log('neither buy nor sell, wtf?');
+  // }
+}
+function calcNBV(things) {
+  // var quantityArr = Array.prototype.slice.call(document.querySelectorAll('#sot [data-column-name="quantity"]'));
+  // var avgPriceArr = Array.prototype.slice.call(document.querySelectorAll('#sot [data-column-name="avgPrice"]'));
+  // var bs = Array.prototype.slice.call(document.querySelectorAll('#sot [data-column-name="bs"]'));
+  // var buy_value = 0;
+  // var sell_value = 0;
+  // bs.forEach(function(d,i){
+  //     if (d.innerHTML == 'B'){
+  //         buy_value -= parseFloat(quantityArr[i].__data__) * parseFloat(avgPriceArr[i].__data__)
+  //     }
+  //     else if (d.innerHTML == 'S'){
+  //         sell_value += parseFloat(quantityArr[i].__data__) * parseFloat(avgPriceArr[i].__data__)
+  //     }
+  // });
+  // return 1;
+}
+var st_data = [
+   {id:"Buy"},
+   {id:"Sell"}
+ ];
+ var st_foot = [ {columnName:"nbr", calc:fCount}, // we need named functions if we want to define them after this
+                 {columnName:"nbv", calc:fNBV}
+               ];
+
+ function fNBV(things) {
+    //  return footerGeneralSum("nbv", tableRef, cols);
+ };
+ function fCount(things) {
+    //  return footerGeneralSum("nbr", tableRef, cols);
+ }
+
+var summaryTable = new dataTable("st",[st_left, st_right], "id", st_foot, formatNumber, ['sot']);
+summaryTable.populate(st_data);
+</script>
+
+
+
+<div id="pieChart"></div>
+<script src="d3.min.js"></script>
+<script src="d3pie.js"></script>
+<script src="data.js"></script>
+<script type="text/javascript">
+var pie = new d3pie("pieChart", {
+	"header": {
+		"title": {
+			"text": "Lots of Programming Languages"
+		}
+	},
+
+	"size": {
+		"canvasWidth": 500,
+		"canvasHeight": 500,
+		"pieOuterRadius": "90%"
+	},
+	"data": {
+		"sortOrder": "value-desc",
+		"content": programmingLanguages
+	},
+	"labels": {
+		"outer": {
+			"pieDistance": 32
+		},
+		"inner": {
+			"hideWhenLessThanPercentage": 3
+		},
+		"mainLabel": {
+			"fontSize": 11
+		},
+		"percentage": {
+			"color": "#ffffff",
+			"decimalPlaces": 0
+		},
+		"value": {
+			"color": "#adadad",
+			"fontSize": 11
+		},
+		"lines": {
+			"enabled": true
+		},
+		"truncation": {
+			"enabled": true
+		}
+	},
+	"effects": {
+		"pullOutSegmentOnClick": {
+			"effect": "linear",
+			"speed": 400,
+			"size": 8
+		}
+	},
+	"misc": {
+		"gradient": {
+			"enabled": true,
+			"percentage": 100
+		}
+	}
+});
+</script>
+</body>
+</html>

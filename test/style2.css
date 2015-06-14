@@ -1,0 +1,66 @@
+body {
+  font: 13px Verdana;
+}
+table, tr, th, td {
+    border-collapse: collapse; /*needs to be collapsed for tr to take border argument*/
+    text-align:right;
+    /*border: 5pt solid green;*/
+}
+td {
+  padding-left: 2em;
+}
+thead {
+    color: red;
+}
+tfoot {
+    color: blue;
+    border-top: 1pt solid black;
+}
+table {
+  margin: 2em;
+}
+.table_header_toprow {
+    text-align: center;
+}
+.border_right {
+     border-right: 1pt solid black;
+}
+tbody tr:nth-child(odd):hover, tbody tr:hover{
+    background: yellow;
+}
+tbody tr:nth-child(odd){
+  background: #eee;
+}
+thead tr:last-child{
+    border-bottom: 1pt solid black;
+}
+#summaryt td:first-child{
+    border-right: 1pt solid black;
+}
+#upper {
+    background: rgb(138, 163, 161);
+}
+
+@media print {
+    .noprint {
+        display: none;
+    }
+    @page {
+        size: landscape; /*might only work in chrome*/
+        margin: 0.5cm;
+    }
+
+}
+
+input:hover, textarea:hover,
+input:focus, textarea:focus {
+    border-color: #C9C9C9;
+}
+
+
+
+form > div > label {
+    display: inline-block;
+    width: 140px;
+    text-align: right;
+}
