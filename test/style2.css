@@ -1,5 +1,5 @@
 body {
-  font: 13px Verdana;
+  font: 9pt Verdana;
 }
 table, tr, th, td {
     border-collapse: collapse; /*needs to be collapsed for tr to take border argument*/
@@ -46,7 +46,7 @@ thead tr:last-child{
         display: none;
     }
     @page {
-        size: landscape; /*might only work in chrome*/
+        size: A3 landscape; /*might only work in chrome*/
         margin: 0.5cm;
     }
 

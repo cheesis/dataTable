@@ -2,7 +2,7 @@
 <html>
 <head>
 <link rel="stylesheet" type="text/css" href="style2.css">
-<script src="numeral.js"></script>
+<script src="3rd_party\numeral.js"></script>
 
 <script>
 // testing number formatting
@@ -43,9 +43,100 @@ function formatNumber(d) {
     }
 }
 </script>
-<script src="..\table.js"></script>
+<script src="table.js"></script>
+
+
+<!--
+  stuff for our form
+
+<link rel="stylesheet" href="3rd_party\uikit.min.css" />
+<script src="http://ajax.googleapis.com/ajax/libs/jquery/1.11.2/jquery.min.js"></script>
+<script src="3rd_party\uikit.min.js"></script>
+-->
+
+
 </head>
 <body>
+  <form action="inbound" method="post" class="noprint uk-form" id="mainform">
+    <div class="uk-form-row">
+        <input type="text" placeholder="Order Program Id" name="opid">
+        <textarea cols="16" rows="5" placeholder="Sales Order Id" name="soids"></textarea>
+    </div>
+    <div class="uk-form-row">
+      <button type="button" onclick="formCB();">Submit</button>
+    </div>
+  </form>
+<script type="text/javascript">
+/**
+started out with Madara Uchiha's answer at http://stackoverflow.com/questions/6990729/simple-ajax-form-using-javascript-no-jquery
+modified according to http://www.html5rocks.com/en/tutorials/es6/promises/
+
+* Takes a form node and sends it over AJAX.
+* @param {HTMLFormElement} form - Form node to send
+* @param {function} callback - Function to handle onload.
+*                              this variable will be bound correctly.
+*/
+
+function ajaxPost(form) {
+  // Return a new promise.
+  return new Promise(function(resolve, reject) {
+    var url = form.action,
+        xhr = new XMLHttpRequest();
+
+    //This is a bit tricky, [].fn.call(form.elements, ...) allows us to call .fn
+    //on the form's elements, even though it's not an array. Effectively
+    //Filtering all of the fields on the form
+    var params = [].filter.call(form.elements, function(el) {
+        //Allow only elements that don't have the 'checked' property
+        //Or those who have it, and it's checked for them.
+        return typeof(el.checked) === 'undefined' || el.checked;
+        //Practically, filter out checkboxes/radios which aren't checekd.
+    }).join('&');
+    // .filter(function(el) { return !!el.name; } //Nameless elements die.
+    // .filter(function(el) { return el.disabled; } //Disabled elements die.
+    // .map(function(el) {
+    //     //Map each field into a name=value string, make sure to properly escape!
+    // }).join('&'); //Then join all the strings by &
+    //     return encodeURIComponent(el.name) + '=' + encodeURIComponent(el.value);
+
+    xhr.open("POST", url);
+    xhr.setRequestHeader("Content-type", "application/x-form-urlencoded");
+
+    //.bind ensures that this inside of the function is the XHR object.
+    xhr.onload = function() {
+        // This is called even on 404 etc
+        // so check the status
+        if (xhr.status == 200) {
+          // Resolve the promise with the response text
+          resolve(xhr.response);
+        }
+        else {
+          // Otherwise reject with the status text
+          // which will hopefully be a meaningful error
+          reject(Error(xhr.statusText));
+        }
+      };
+
+      // Handle network errors
+      xhr.onerror = function() {
+        reject(Error("Network Error"));
+      };
+    //All preperations are clear, send the request!
+    xhr.send(params);
+  });
+}
+
+// time to shine
+function formCB() {
+  ajaxPost(document.getElementById('mainform')).then(function (response) {
+    console.log("Success!", response);
+    myTable.populate(JSON.parse(response));
+  }).catch(function (error) {
+    console.log("Failed!", error);
+  });
+}
+</script>
+
 <table id="st"></table>
 <table id="sot"></table>
 
@@ -122,10 +213,10 @@ function formatNumber(d) {
 
   function fsumQuantity(things) {
       //this calculates the sum of the column values
-      return things.getCol("quantity").reduce(function(a, b){return a+b;});
+      return things.getCol("quantity").sum();//.sum();
   };
   function fsumVWAPPnL(things) {
-    return things.getCol("vwapPnL").reduce(function(a, b){return a+b;});
+    return things.getCol("vwapPnL").sum();
   };
 
   function fAvgPrice(things){
@@ -138,8 +229,8 @@ function formatNumber(d) {
       });
 
       //sum(product)/sum(quantities)
-      return product.reduce(function(a, b){return a+b;}) /
-        quantities.reduce(function(a, b){return a+b;});
+      return product.sum() /
+        quantities.sum();
   }
 
   //sales order table data
@@ -160,11 +251,11 @@ function formatNumber(d) {
   myTable.populate(sotd);
   myTable.populate(bm_data);
   // adds more data after the given time
-  setTimeout(function(){ myTable.populate(later_bm_data); }, 3000);
+  setTimeout(function(){ myTable.populate(later_bm_data); }, 2000);
   setTimeout(function(){
     myTable.populate([{oid:"oim1", avgPrice:12.5, quantity:5000, bs:"B"}]);
     myTable.populate([]);
-  }, 5000);
+  }, 3000);
 
 
 </script>
@@ -214,7 +305,7 @@ function calcNBV(things) {
     return ourSide.indexOf(sides[i]) == 0; //javascript doesn't have startsWith yet
   });
   if (tradedValueThisSide.length > 0) {
-    var totalValue = tradedValueThisSide.reduce(function(a, b){return a+b;});
+    var totalValue = tradedValueThisSide.sum();
     if (ourSide == "Sell") {
       return totalValue;
     } else if(ourSide == "Buy"){
@@ -236,10 +327,10 @@ var st_data = [
                ];
 
  function fNBV(things) {
-   return things.getCol("nbv").reduce(function(a, b){return a+b;});
+   return things.getCol("nbv").sum();
  };
  function fCount(things) {
-    return things.getCol("nbr").reduce(function(a, b){return a+b;});
+    return things.getCol("nbr").sum();
  }
 
 var summaryTable = new dataTable("st",[st_left, st_right], "id", st_foot, formatNumber, ['sot']);
@@ -249,8 +340,8 @@ summaryTable.populate(st_data);
 
 
 <div id="pieChart"></div>
-<script src="d3.min.js"></script>
-<script src="d3pie.js"></script>
+<script src="3rd_party\d3.min.js"></script>
+<script src="3rd_party\d3pie.js"></script>
 <script src="data.js"></script>
 <script type="text/javascript">
 var pie = new d3pie("pieChart", {
