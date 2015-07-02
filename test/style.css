@@ -57,10 +57,34 @@ input:focus, textarea:focus {
     border-color: #C9C9C9;
 }
 
-
-
 form > div > label {
     display: inline-block;
     width: 140px;
     text-align: right;
+}
+form > * {
+  margin: 5px;
+}
+fieldset {
+  align: left;
+  width:100px;
+}
+#footer {
+    position: fixed;
+    bottom: 0;
+    width: 100%;
+    background: #3498db;
+}
+div.littleBox {
+  width: 10px;
+  height: 10px;
+  border: thin black solid;
+  float: left;
+  margin: 5px;
+  animation-name: ride;
+  animation-duration: 2s;
+}
+@keyframes ride {
+  from {width: 100px;}
+  to {width: 10px; }
 }

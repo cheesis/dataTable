@@ -1,7 +1,7 @@
 <!DOCTYPE html>
 <html>
 <head>
-<link rel="stylesheet" type="text/css" href="style2.css">
+<link rel="stylesheet" type="text/css" href="style.css">
 <script src="3rd_party\numeral.js"></script>
 
 <script>
@@ -46,25 +46,19 @@ function formatNumber(d) {
 <script src="table.js"></script>
 
 
-<!--
-  stuff for our form
-
-<link rel="stylesheet" href="3rd_party\uikit.min.css" />
-<script src="http://ajax.googleapis.com/ajax/libs/jquery/1.11.2/jquery.min.js"></script>
-<script src="3rd_party\uikit.min.js"></script>
--->
-
-
 </head>
 <body>
-  <form action="inbound" method="post" class="noprint uk-form" id="mainform">
-    <div class="uk-form-row">
-        <input type="text" placeholder="Order Program Id" name="opid">
-        <textarea cols="16" rows="5" placeholder="Sales Order Id" name="soids"></textarea>
-    </div>
-    <div class="uk-form-row">
-      <button type="button" onclick="formCB();">Submit</button>
-    </div>
+  <form action="baseSoData" method="post" class="noprint" id="mainform">
+    <input type="text" placeholder="Order Program Id" name="opid"><br>
+    <textarea cols="16" rows="5" placeholder="Sales Order Id" name="soids"></textarea>
+    <fieldset>
+      <legend>Benchmark</legend>
+        <label><input type="checkbox" name="vwapBM">VWAP</label><br>
+        <label><input type="checkbox" name="closeBM">Close</label><br>
+        <label><input type="checkbox" name="arrivalBM">Arrival</label><br>
+        <label><input type="checkbox" name="customBM">Custom</label>
+    </fieldset>
+    <button type="button" onclick="formCB();" name="submit" id="button">Submit</button>
   </form>
 <script type="text/javascript">
 /**
@@ -77,58 +71,68 @@ modified according to http://www.html5rocks.com/en/tutorials/es6/promises/
 *                              this variable will be bound correctly.
 */
 
-function ajaxPost(form) {
+function ajaxPost(url, jsonData) {
   // Return a new promise.
   return new Promise(function(resolve, reject) {
-    var url = form.action,
-        xhr = new XMLHttpRequest();
+    var request = new XMLHttpRequest();
+    request.open("POST", url);
+    request.setRequestHeader("Content-type", "application/json");
+    request.onload = function() {
+      // This is called even on 404 etc
+      // so check the status
+      if (request.status == 200) {
+        resolve(request.response);  // Resolve the promise with the response text
+      }
+      else {
+        // Otherwise reject with the status text
+        // which will hopefully be a meaningful error
+        reject(Error(request.statusText));
+      }
+    };
+    // Handle network errors
+    request.onerror = function() {
+      reject(Error("Network Error"));
+    };
 
-    //This is a bit tricky, [].fn.call(form.elements, ...) allows us to call .fn
-    //on the form's elements, even though it's not an array. Effectively
-    //Filtering all of the fields on the form
-    var params = [].filter.call(form.elements, function(el) {
-        //Allow only elements that don't have the 'checked' property
-        //Or those who have it, and it's checked for them.
-        return typeof(el.checked) === 'undefined' || el.checked;
-        //Practically, filter out checkboxes/radios which aren't checekd.
-    }).join('&');
-    // .filter(function(el) { return !!el.name; } //Nameless elements die.
-    // .filter(function(el) { return el.disabled; } //Disabled elements die.
-    // .map(function(el) {
-    //     //Map each field into a name=value string, make sure to properly escape!
-    // }).join('&'); //Then join all the strings by &
-    //     return encodeURIComponent(el.name) + '=' + encodeURIComponent(el.value);
-
-    xhr.open("POST", url);
-    xhr.setRequestHeader("Content-type", "application/x-form-urlencoded");
-
-    //.bind ensures that this inside of the function is the XHR object.
-    xhr.onload = function() {
-        // This is called even on 404 etc
-        // so check the status
-        if (xhr.status == 200) {
-          // Resolve the promise with the response text
-          resolve(xhr.response);
-        }
-        else {
-          // Otherwise reject with the status text
-          // which will hopefully be a meaningful error
-          reject(Error(xhr.statusText));
-        }
-      };
-
-      // Handle network errors
-      xhr.onerror = function() {
-        reject(Error("Network Error"));
-      };
-    //All preperations are clear, send the request!
-    xhr.send(params);
+    request.send(JSON.stringify(jsonData));
   });
 }
 
+function getFormJSON(formId) {
+  var formHash = {};
+  var elements = document.getElementById('mainform').elements;
+  for (var i = 0, element; element = elements[i++];) {
+    switch (element.type) {
+      case "checkbox":
+        if (!element['checked'])
+          break;
+        else {
+          formHash[element['name']] = true;
+        }
+      case "button":
+        break; //disregard buttons
+      case "textarea":
+        formHash[element['name']] = element['value'].split('\n').filter(function (obj) {
+          if(obj)
+            return true;
+          else
+            return false; //discard empty lines
+        });
+        break;
+      default:
+        formHash[element['name']] = element['value'];
+    }
+  }
+  console.log(formHash);
+  return formHash
+}
 // time to shine
-function formCB() {
-  ajaxPost(document.getElementById('mainform')).then(function (response) {
+function formCB(formId) {
+  var formJSON = getFormJSON(formId);
+  var littleBox = document.createElement("div");
+  littleBox.classList.add('littleBox');
+  document.getElementById('footer').appendChild(littleBox);
+  ajaxPost('baseSoData', formJSON).then(function (response) {
     console.log("Success!", response);
     myTable.populate(JSON.parse(response));
   }).catch(function (error) {
@@ -137,6 +141,7 @@ function formCB() {
 }
 </script>
 
+<div id="footer" class="noprint"></div>
 <table id="st"></table>
 <table id="sot"></table>
 

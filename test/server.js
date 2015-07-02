@@ -1,5 +1,4 @@
 var http = require('http');
-var qs = require('querystring');
 var fs = require('fs');
 
 var first_page_file_name = 'index.html';  // has to be utf-8
@@ -20,15 +19,18 @@ if (!String.prototype.endsWith) {
 }
 
 http.createServer(function (request, response) {
+  console.log(request.method, request.url);
   if(request.method === "POST") {
-    if (request.url === "/inbound") {
+    if (request.url === "/baseSoData") {
       var requestBody = '';
       request.on('data', function(data) {
         requestBody += data;
       });
       request.on('end', function() {
-        var formData = qs.parse(requestBody);
-        console.log('POST-request', formData);
+
+        var formData = JSON.parse(requestBody);
+        console.log('formData', formData);
+        console.log('opid', formData.opid);
         response.writeHead(200, {'Content-Type': 'application/json'});
         var responseData = [
           {oid:"oim6", avgPrice:50.456, quantity:10000, bs:"S"},
@@ -43,7 +45,6 @@ http.createServer(function (request, response) {
       response.end('<!doctype html><html><head><title>404</title></head><body>404: Resource Not Found</body></html>');
     }
   } else {
-    console.log('GET-request', request.url);
     //don't read the first letter, it's '/', which will make node look at C:\
     var html = fs.readFileSync(request.url.substr(1));
     if (request.url.endsWith('html')) {
