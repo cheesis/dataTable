@@ -98,7 +98,7 @@ function ajaxPost(url, jsonData) {
   });
 }
 
-function getFormJSON(formId) {
+function getFormData(formId) {
   var formHash = {};
   var elements = document.getElementById('mainform').elements;
   for (var i = 0, element; element = elements[i++];) {
@@ -128,13 +128,44 @@ function getFormJSON(formId) {
 }
 // time to shine
 function formCB(formId) {
-  var formJSON = getFormJSON(formId);
+  var formData = getFormData(formId);
+  var soiIds = formData.soids; //this is sent to query 1
+
+  // update status div
   var littleBox = document.createElement("div");
-  littleBox.classList.add('littleBox');
+  littleBox.classList.add('littleBoxx');
   document.getElementById('footer').appendChild(littleBox);
-  ajaxPost('baseSoData', formJSON).then(function (response) {
+
+  ajaxPost('baseSoData', soiIds).then(function (response) {
+    //handle standard data
     console.log("Success!", response);
-    myTable.populate(JSON.parse(response));
+    var res = JSON.parse(response);
+    myTable.populate(res);
+    return res;
+  }).then(function (res) {
+    // handle vwap
+    if (formData.vwapBM) {
+      console.log('handling wvap');
+      res.forEach(function (r) {
+        ajaxPost('vwapBM',r).then(function (vwap) {
+          console.log("got vwap", vwap);
+          myTable.populate(JSON.parse(vwap));
+        });
+      });
+    }
+    // handle custom
+    if (formData.customBM) {
+      console.log('handling custom');
+      res.forEach(function (r) {
+        ajaxPost('customBM',r).then(function (custom) {
+          console.log("got custom", custom);
+          myTable.populate(JSON.parse(custom));
+        });
+      });
+    }
+  }).then(function (res) {
+    console.log('');
+    console.log('All done');
   }).catch(function (error) {
     console.log("Failed!", error);
   });
@@ -171,7 +202,13 @@ function formCB(formId) {
           ,{columnName:'vwapPnLbps',displayName:'P&L Bps', calc:pnlbps}
       ]
   };
-  var sot_definition = [sot_base, vwap_columns];
+  var custom_columns = {
+      section: "Custom",
+      columns: [
+           {columnName:'customAvgPrice',displayName:'Average Price'}
+      ]
+  };
+  var sot_definition = [sot_base, vwap_columns, custom_columns];
 
   //columns that should have a value in the footer
   var sot_foot = [{columnName:"quantity", calc:fsumQuantity}, // we need named functions if we want to define them after this
@@ -237,30 +274,30 @@ function formCB(formId) {
       return product.sum() /
         quantities.sum();
   }
-
-  //sales order table data
-  var sotd = [
-      // {oid:"oim1", avgPrice:12.5, quantity:20000, bs:"B"},
-      {oid:"oim2", avgPrice:50.456, quantity:10000, bs:"S"},
-      {oid:"oim3", avgPrice:50.456, quantity:10000, bs:"S", NBV:1230}
-  ];
-  //we can't assume that we get the data back in the right order
-  var bm_data = [
-        {oid:"oim2",vwapAvgPrice:50, vwapVolume:50000}
-      , {oid:"oim3",vwapAvgPrice:60, vwapVolume:60000}
-  ];
-  var later_bm_data = [{oid:"oim1",vwapAvgPrice:12, vwapVolume:1000}];
+  //
+  // //sales order table data
+  // var sotd = [
+  //     // {oid:"oim1", avgPrice:12.5, quantity:20000, bs:"B"},
+  //     {oid:"oim2", avgPrice:50.456, quantity:10000, bs:"S"},
+  //     {oid:"oim3", avgPrice:50.456, quantity:10000, bs:"S", NBV:1230}
+  // ];
+  // //we can't assume that we get the data back in the right order
+  // var bm_data = [
+  //       {oid:"oim2",vwapAvgPrice:50, vwapVolume:50000}
+  //     , {oid:"oim3",vwapAvgPrice:60, vwapVolume:60000}
+  // ];
+  // var later_bm_data = [{oid:"oim1",vwapAvgPrice:12, vwapVolume:1000}];
 
 
   var myTable = new dataTable("sot",sot_definition, "oid", sot_foot, formatNumber);
-  myTable.populate(sotd);
-  myTable.populate(bm_data);
-  // adds more data after the given time
-  setTimeout(function(){ myTable.populate(later_bm_data); }, 2000);
-  setTimeout(function(){
-    myTable.populate([{oid:"oim1", avgPrice:12.5, quantity:5000, bs:"B"}]);
-    myTable.populate([]);
-  }, 3000);
+  // myTable.populate(sotd);
+  // myTable.populate(bm_data);
+  // // adds more data after the given time
+  // setTimeout(function(){ myTable.populate(later_bm_data); }, 2000);
+  // setTimeout(function(){
+  //   myTable.populate([{oid:"oim1", avgPrice:12.5, quantity:5000, bs:"B"}]);
+  //   myTable.populate([]);
+  // }, 3000);
 
 
 </script>
