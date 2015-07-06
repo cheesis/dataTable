@@ -1,5 +1,4 @@
 /* TODO
-we have to pass a formatter for each column instead, not all numbers should ahve 4 decimals
 rewrite dataTableSelector as module pattern singleton to have private functions
 if you have column values that depend on a calculated footer value then you have to call populate (at lest) twice
   once with the values that will populate the footer and then without values to recalculate the body values
@@ -101,8 +100,16 @@ dataTable.prototype._getRightBorderIndices = function(columns){
       }, this);
   };
 
-  dataTable.prototype._formatData = function (d) {
-    return this._dataFormatter ? this._dataFormatter(d) : d;
+  dataTable.prototype._formatData = function (col, d) {
+    if (col.hasOwnProperty('dataFormater')) {
+      console.log('dataFormater on column found');
+      return col.dataFormater(d);
+    }
+    else if (this._dataFormatter)
+      return this._dataFormatter(d)
+    else
+      return d;
+    // return this._dataFormatter ? this._dataFormatter(d) : d;
   };
 
   dataTable.prototype._populateFooter = function(){
@@ -116,7 +123,7 @@ dataTable.prototype._getRightBorderIndices = function(columns){
             getCol: dataTableSelector.columnSelector.bind(this, this._tableId)
           };
           var calculatedValue = d.calc(things);
-          footRow.cells[where].innerHTML = this._formatData(calculatedValue);
+          footRow.cells[where].innerHTML = this._formatData(d, calculatedValue);
           footRow.cells[where].__data__ = calculatedValue;
       }, this);
   };
@@ -143,34 +150,38 @@ dataTable.prototype._getRightBorderIndices = function(columns){
               //create
               var bodyRow = tbody.insertRow();
               bodyRow.dataset.id = id;
-              this._flatColumns.forEach(function(r, i, myArray){
-                  var newCell  = bodyRow.insertCell();
-                  newCell.appendChild(document.createTextNode(this._formatData(d[r]))); //e.g. d.oid here written as d['oid']
-                  newCell.dataset.columnName = r;
-                  newCell.__data__ = d[r];
-                  newCell.setAttribute("contentEditable", true);
-                  theTableInstance = this; // save for later use, 'this' will be something else
-                  newCell.addEventListener("blur", function () {
-                    this.__data__ = this.innerHTML;
-                    this.innerHTML = theTableInstance._formatData(this.__data__);
-                    theTableInstance.populate([]); //recalculate values
-                  });
-                  newCell.addEventListener("focus", function () {
-                    this.innerHTML = this.__data__;
-                  });
+              this._columns.forEach(function(section){
+                section.columns.forEach(function(column){
+                    var newCell  = bodyRow.insertCell();
+                    newCell.appendChild(document.createTextNode(this._formatData(column, d[column.columnName]))); //e.g. d.oid here written as d['oid']
+                    newCell.dataset.columnName = column.columnName;
+                    newCell.__data__ = d[column.columnName];
+                    newCell.setAttribute("contentEditable", true);
+                    theTableInstance = this; // save for later use, 'this' will be something else
+                    newCell.addEventListener("blur", function () {
+                      this.__data__ = this.innerHTML;
+                      this.innerHTML = theTableInstance._formatData(column, this.__data__);
+                      theTableInstance.populate([]); //recalculate values
+                    });
+                    newCell.addEventListener("focus", function () {
+                      this.innerHTML = this.__data__;
+                    });
+                }, this);
               }, this);
           } else {
               //update row
               Object.getOwnPropertyNames(d).forEach(function(prop, pindex){
                   if (prop != this._rowIndex) //we don't want to update the index
                   {
-                      var row_cells = bodyrows[rowNbr].cells;
-                      for (k = 0; k < row_cells.length; k++) {
-                          if (row_cells[k].dataset.columnName == prop) {
-                              row_cells[k].innerHTML = this._formatData(d[prop]);
-                              row_cells[k].__data__ = d[prop];
-                          }
-                      }
+                    this._columns.forEach(function(section){
+                      section.columns.forEach(function(column){
+                        if (d.hasOwnProperty(column.columnName)){
+                          var columnIndex = this._flatColumns.indexOf(column.columnName);
+                          bodyrows[rowNbr].cells[columnIndex].innerHTML = this._formatData(column, d[column.columnName]);
+                          bodyrows[rowNbr].cells[columnIndex].__data__ = d[column.columnName];
+                        }
+                      }, this);
+                    }, this);
                   }
               }, this);
           }
@@ -180,22 +191,22 @@ dataTable.prototype._getRightBorderIndices = function(columns){
       //compute values for calculated columns
       //almost same code as _populateFooter - bad style
       this._columns.forEach(function(section){
-          section.columns.forEach(function(column){
-              if (column.hasOwnProperty('calc')){
-                  var columnIndex = this._flatColumns.indexOf(column.columnName);
-                  for (i = 0; i < bodyrows.length; i++) {
-                    var things = {
-                      getColInFootRow: dataTableSelector.colInFootRowSelector.bind(this, this._tableId),
-                      getColInRow: dataTableSelector.colInBodyRowSelector.bind(this, this._tableId, bodyrows[i].dataset.id),
-                      getColInBodyRow: dataTableSelector.colInBodyRowSelector.bind(this, this._tableId),
-                      getCol: dataTableSelector.columnSelector.bind(this, this._tableId)
-                    };
-                    var calculatedValue = column.calc(things);
-                    bodyrows[i].cells[columnIndex].innerHTML = this._formatData(calculatedValue);
-                    bodyrows[i].cells[columnIndex].__data__ = calculatedValue;
-                  }
-              }
-          }, this);
+        section.columns.forEach(function(column){
+          if (column.hasOwnProperty('calc')){
+            var columnIndex = this._flatColumns.indexOf(column.columnName);
+            for (i = 0; i < bodyrows.length; i++) {
+              var things = {
+                getColInFootRow: dataTableSelector.colInFootRowSelector.bind(this, this._tableId),
+                getColInRow: dataTableSelector.colInBodyRowSelector.bind(this, this._tableId, bodyrows[i].dataset.id),
+                getColInBodyRow: dataTableSelector.colInBodyRowSelector.bind(this, this._tableId),
+                getCol: dataTableSelector.columnSelector.bind(this, this._tableId)
+              };
+              var calculatedValue = column.calc(things);
+              bodyrows[i].cells[columnIndex].innerHTML = this._formatData(column, calculatedValue);
+              bodyrows[i].cells[columnIndex].__data__ = calculatedValue;
+            }
+          }
+        }, this);
       }, this);
 
 
@@ -203,6 +214,8 @@ dataTable.prototype._getRightBorderIndices = function(columns){
       this._populateFooter();
       this._setBorders();
       this._tableRef.dispatchEvent(this.populateEvent);
+
+      return data; //return the data so we can use it in a promise.then() method
   }
 
 //Singleton

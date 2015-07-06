@@ -49,6 +49,9 @@ thead tr:last-child{
         size: A3 landscape; /*might only work in chrome*/
         margin: 0.5cm;
     }
+    body {
+      font: 8pt Verdana;
+    }
 
 }
 
