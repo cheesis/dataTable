@@ -296,6 +296,29 @@ function ajaxPost(url, jsonData) {
   });
 }
 
+function addToFooter(id, item) {
+  var bigBox = document.createElement("div");
+  bigBox.id = "bigBox_" + id;
+  bigBox.classList.add('bigBox');
+
+  var littleBox = document.createElement("div");
+  littleBox.id = "littleBox_" + id;
+  littleBox.classList.add('littleBox');
+
+  var text = document.createTextNode(item);
+
+  document.getElementById('footer').appendChild(bigBox);
+  bigBox.appendChild(littleBox);
+  bigBox.appendChild(text);
+}
+
+function markCompleteFooter(id) {
+  var littleBox = document.getElementById('littleBox_' + id);
+  littleBox.classList.add('done');
+
+  var bigBox = document.getElementById('bigBox_' + id);
+  bigBox.classList.add('done');
+}
 
 function formCB(formId) {
   var formData = getFormData(formId);
@@ -303,46 +326,58 @@ function formCB(formId) {
 
   // build sales order table according to user selection
   // columns that are always present
-  var sot_definition = [sot_base];
-  var sot_foot_definition = sot_foot;
+  var sot_definition = [sot_base]; //contains one object (base colmns and section name)
+  var sot_foot_definition = sot_foot; //contains columns as array
+
+  // update footer with expected ajax-calls
+  addToFooter("sot_base", "base data");
 
   // columns that depend on user selection
   if (formData.arrivalBM) {
-    sot_foot_definition = sot_foot_definition.concat(sot_foot_arrival)
-    sot_definition = sot_definition.concat(arrival_columns)
+    sot_foot_definition = sot_foot_definition.concat(sot_foot_arrival);
+    sot_definition = sot_definition.concat(arrival_columns);
+    soiIds.forEach(function (a) {
+      addToFooter("arrival_" + a, "arrival BM data for " + a);
+    });
   }
   if (formData.vwapBM) {
-    sot_foot_definition = sot_foot_definition.concat(sot_foot_vwap)
-    sot_definition = sot_definition.concat(vwap_columns)
+    sot_foot_definition = sot_foot_definition.concat(sot_foot_vwap);
+    sot_definition = sot_definition.concat(vwap_columns);
+    soiIds.forEach(function (a) {
+      addToFooter("vwap_" + a, "VWAP BM data for " + a);
+    });
   }
   if (formData.closeBM) {
-    sot_foot_definition = sot_foot_definition.concat(sot_foot_close)
-    sot_definition = sot_definition.concat(close_columns)
+    sot_foot_definition = sot_foot_definition.concat(sot_foot_close);
+    sot_definition = sot_definition.concat(close_columns);
+    soiIds.forEach(function (a) {
+      addToFooter("close_" + a, "Close BM data for " + a);
+    });
   }
   if (formData.customBM) {
-    sot_foot_definition = sot_foot_definition.concat(sot_foot_custom)
-    sot_definition = sot_definition.concat(custom_columns)
+    sot_foot_definition = sot_foot_definition.concat(sot_foot_custom);
+    sot_definition = sot_definition.concat(custom_columns);
+    soiIds.forEach(function (a) {
+      addToFooter("custom_" + a, "Custom BM data for " + a);
+    });
   }
 
   var myTable = new dataTable("sot",sot_definition, "oid", sot_foot_definition, formatNumber);
 
-  // update status div
-  var littleBox = document.createElement("div");
-  littleBox.classList.add('littleBox');
-  document.getElementById('footer').appendChild(littleBox);
-
   //handle standard data
-  ajaxPost('baseSoData', soiIds).then(function (response) {
+  ajaxPost('baseSoData', soiIds).then(JSON.parse).then(function (response) {
     console.log("Success!", response);
-    return myTable.populate(JSON.parse(response));
+    markCompleteFooter("sot_base");
+    return myTable.populate(response);
   }).then(function (res) {
     // handle vwap
     if (formData.vwapBM) {
       console.log('handling wvap');
       res.forEach(function (r) {
-        ajaxPost('vwapBM',r).then(function (vwap) {
+        ajaxPost('vwapBM',r).then(JSON.parse).then(function (vwap) {
           console.log("got vwap", vwap);
-          myTable.populate(JSON.parse(vwap));
+          markCompleteFooter("vwap_" + vwap[0].oid);
+          myTable.populate(vwap);
         });
       });
     }
