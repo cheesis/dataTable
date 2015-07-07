@@ -47,12 +47,15 @@ function dataTable(tableId, columns, indexColumn, footer_definition, numberForma
 }
 dataTable.prototype._getRightBorderIndices = function(columns){
       var right_borders_at = [];
-      right_borders_at[0] = columns[0]['columns'].length - 1; //-1 because indices start at 0
-      for (var i = 1; i < columns.length-1; i++) { //-1 to ignore the last one, we don't want borders all the way to the right
-          right_borders_at[i] = right_borders_at[i-1] + columns[i]['columns'].length;
-      }
+      columns.map(function (el, i) { // loop through sections
+        return el.columns.length; // builds array with one element per section containing length
+      }).reduce(function (pre, curr) { // cumsum adjusted for indices starting at 0 not 1
+        right_borders_at.push(curr + pre - 1); // minus one because indices start at 0
+        return curr + pre;
+      }, 0);
+      right_borders_at.pop(); // we don't want borders furthest to the right
       return right_borders_at;
-  };
+  }
   dataTable.prototype._getFlatColumns = function (columns){
       var _colList = [];
       columns.forEach(function(sec){

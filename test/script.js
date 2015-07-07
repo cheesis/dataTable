@@ -307,9 +307,9 @@ function formCB(formId) {
   var sot_foot_definition = sot_foot;
 
   // columns that depend on user selection
-  if (formData.customBM) {
-    sot_foot_definition = sot_foot_definition.concat(sot_foot_custom)
-    sot_definition = sot_definition.concat(custom_columns)
+  if (formData.arrivalBM) {
+    sot_foot_definition = sot_foot_definition.concat(sot_foot_arrival)
+    sot_definition = sot_definition.concat(arrival_columns)
   }
   if (formData.vwapBM) {
     sot_foot_definition = sot_foot_definition.concat(sot_foot_vwap)
@@ -319,10 +319,11 @@ function formCB(formId) {
     sot_foot_definition = sot_foot_definition.concat(sot_foot_close)
     sot_definition = sot_definition.concat(close_columns)
   }
-  if (formData.arrivalBM) {
-    sot_foot_definition = sot_foot_definition.concat(sot_foot_arrival)
-    sot_definition = sot_definition.concat(arrival_columns)
+  if (formData.customBM) {
+    sot_foot_definition = sot_foot_definition.concat(sot_foot_custom)
+    sot_definition = sot_definition.concat(custom_columns)
   }
+
   var myTable = new dataTable("sot",sot_definition, "oid", sot_foot_definition, formatNumber);
 
   // update status div
