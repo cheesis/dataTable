@@ -1,5 +1,4 @@
 // TODO:
-  // reset tables if you press submit again
   // own function for multiply as in function pctOfValue
   // update spinner before actually running the queries and then
     // check them when they are done
@@ -296,6 +295,12 @@ function ajaxPost(url, jsonData) {
   });
 }
 
+function removeChildren(query) {
+  var set = document.querySelectorAll(query);
+  var arr = Array.prototype.slice.call(set);
+  arr.forEach(function(a) {a.remove();});
+}
+
 function addToFooter(id, item) {
   var bigBox = document.createElement("div");
   bigBox.id = "bigBox_" + id;
@@ -321,6 +326,9 @@ function markCompleteFooter(id) {
 }
 
 function formCB(formId) {
+  removeChildren("#sot > *");
+  removeChildren("#footer > *");
+
   var formData = getFormData(formId);
   var soiIds = formData.soids; //this is sent to query 1
 
