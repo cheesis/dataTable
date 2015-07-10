@@ -259,8 +259,3 @@ var dataTableSelector =
     }
   }
 }
-
-//ugly but helpful
-Array.prototype.sum = function () {
-  return this.reduce(function(a, b){return a+b;});
-}

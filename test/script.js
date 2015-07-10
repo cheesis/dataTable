@@ -3,6 +3,19 @@
   // update spinner before actually running the queries and then
     // check them when they are done
 
+/*
+ MISC
+*/
+Array.prototype.sum = function () {
+  return this.reduce(function(a, b){return a+b;});
+}
+
+Array.prototype.mul = function(arr) {
+  return this.map(function(x, index){
+    return arr[index] * x;
+  });
+}
+
 // number formatting
 numeral.language('sv', {
     delimiters: {
@@ -107,9 +120,7 @@ function tradedValue(things) {
 }
 function pctOfValue(things) {
   // var totalValue = things.getColInFootRow("avgPrice") * things.getColInFootRow("quantity");
-  var totalValue = things.getCol("avgPrice").map(function (avgPrice, ind) {
-    return things.getCol("quantity")[ind] * avgPrice;
-  }).sum();
+  var totalValue = things.getCol("avgPrice").mul(things.getCol("quantity")).sum();
   return things.getColInRow("tradedValue") / totalValue * 100;
 }
 function participation(things) {
@@ -147,14 +158,7 @@ function fAvgPrice(things){
     var quantities = things.getCol("quantity");
     var prices = things.getCol("avgPrice");
 
-    //quantities * prices
-    var product = quantities.map(function(x, index){ //here x = quantities[index]
-      return prices[index] * x;
-    });
-
-    //sum(product)/sum(quantities)
-    return product.sum() /
-      quantities.sum();
+    return quantities.mul(prices).sum() / quantities.sum();
 }
 
 /*

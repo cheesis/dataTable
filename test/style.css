@@ -38,7 +38,8 @@ thead tr:last-child{
     border-right: 1pt solid black;
 }
 #upper {
-    background: rgb(138, 163, 161);
+    background: rgba(181, 181, 181, 0.8);
+    /*background: rgba(52, 152, 219, .8);*/
 }
 
 @media print {
@@ -76,7 +77,7 @@ fieldset {
     position: fixed;
     bottom: 0;
     width: 100%;
-    background: #3498db;
+     background: rgba(52, 152, 219, .8); 
     overflow: auto;
     vertical-align: middle;
 }
@@ -108,7 +109,8 @@ div.bigBox {
 div.bigBox.done {
   animation-name: disappear;
   animation-duration: 2s;
-  height: 0px;
+  animation-delay: 1s;
+  animation-fill-mode: forwards; /*in order to keep the final state*/
 }
 @keyframes disappear {
   from {height: 22px;}
