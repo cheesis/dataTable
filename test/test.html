@@ -15,8 +15,10 @@
         <label><input type="checkbox" name="vwapBM">VWAP</label><br>
         <label><input type="checkbox" name="closeBM">Close</label><br>
         <label><input type="checkbox" name="arrivalBM">Arrival</label><br>
-        <label><input type="checkbox" name="customBM">Custom</label>
+        <label><input type="checkbox" name="customBM" onclick="enable_input('customBMvalue')">Custom</label>
+        <input type="time" name="customBMvalue" id="customBMvalue" disabled="true" value="16:00:00">
     </fieldset>
+    <!-- has to be type button because we submit with javascript -->
     <button type="button" onclick="formCB('mainform');" name="submit" id="button">Submit</button>
   </form>
 

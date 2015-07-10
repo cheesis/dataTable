@@ -1,7 +1,5 @@
 // TODO:
-  // own function for multiply as in function pctOfValue
-  // update spinner before actually running the queries and then
-    // check them when they are done
+// send time for custom benchmark
 
 /*
  MISC
@@ -244,6 +242,9 @@ var st_data = [
 //
 // here we handle the user input
 //
+function enable_input(input_id) {
+  document.getElementById(input_id).disabled = this.checked;
+}
 function getFormData(formId) {
   var formHash = {};
   var elements = document.getElementById('mainform').elements;
@@ -397,9 +398,10 @@ function formCB(formId) {
     if (formData.customBM) {
       console.log('handling custom');
       res.forEach(function (r) {
-        ajaxPost('customBM',r).then(function (custom) {
+        ajaxPost('customBM',r).then(JSON.parse).then(function (custom) {
           console.log("got custom", custom);
-          myTable.populate(JSON.parse(custom));
+          markCompleteFooter("custom_" + custom[0].oid);
+          myTable.populate(custom);
         });
       });
     }
