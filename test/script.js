@@ -1,5 +1,8 @@
 // TODO:
 // send time for custom benchmark
+// preload form from get-request
+// complete columns for benchmarks
+// add benchmark table that summarizes benchmark data
 
 /*
  MISC
@@ -51,6 +54,66 @@ function formatNumber2decimals(d) {
 }
 function formatNumber0decimals(d) {
   return isNumeric(d) ? numeral(d).format('0,0') : d;
+}
+
+/*
+  prepare the default pie chart definition object
+*/
+function getPieChart (title, data) {
+  return {
+    "header": {
+      "title": {
+        "text": title
+      }
+    },
+    "size": {
+      "canvasWidth": 500,
+      "canvasHeight": 500,
+      "pieOuterRadius": "90%"
+    },
+    "data": {
+      "sortOrder": "value-desc",
+      "content": data
+    },
+    "labels": {
+      "outer": {
+        "pieDistance": 32
+      },
+      "inner": {
+        "hideWhenLessThanPercentage": 3
+      },
+      "mainLabel": {
+        "fontSize": 11
+      },
+      "percentage": {
+        "color": "#ffffff",
+        "decimalPlaces": 0
+      },
+      "value": {
+        "color": "#adadad",
+        "fontSize": 11
+      },
+      "lines": {
+        "enabled": true
+      },
+      "truncation": {
+        "enabled": true
+      }
+    },
+    "effects": {
+      "pullOutSegmentOnClick": {
+        "effect": "linear",
+        "speed": 400,
+        "size": 8
+      }
+    },
+    "misc": {
+      "gradient": {
+        "enabled": true,
+        "percentage": 100
+      }
+    }
+  };
 }
 
 /*
@@ -330,12 +393,29 @@ function markCompleteFooter(id) {
   bigBox.classList.add('done');
 }
 
+
+// benchmark responses are all handled the same way
+function handleBM(formData, prop, response, myTable) {
+  if (formData[prop]) {
+    console.log('handling ' + prop);
+    response.forEach(function (r) {
+      ajaxPost(prop,r).then(JSON.parse).then(function (propResponse) {
+        console.log("got",prop , propResponse);
+        markCompleteFooter(prop + propResponse[0].oid);
+        myTable.populate(propResponse);
+      });
+    });
+  }
+}
+
 function formCB(formId) {
   removeChildren("#sot > *");
   removeChildren("#footer > *");
+  removeChildren("#sourcesPie > *");
+  removeChildren("#venuesPie > *");
 
   var formData = getFormData(formId);
-  var soiIds = formData.soids; //this is sent to query 1
+  var soIds = formData.soids; //this is sent to query 1
 
   // build sales order table according to user selection
   // columns that are always present
@@ -344,70 +424,69 @@ function formCB(formId) {
 
   // update footer with expected ajax-calls
   addToFooter("sot_base", "base data");
+  addToFooter("sources", "sources");
+  addToFooter("venues", "venues");
 
   // columns that depend on user selection
   if (formData.arrivalBM) {
     sot_foot_definition = sot_foot_definition.concat(sot_foot_arrival);
     sot_definition = sot_definition.concat(arrival_columns);
-    soiIds.forEach(function (a) {
-      addToFooter("arrival_" + a, "arrival BM data for " + a);
+    soIds.forEach(function (a) {
+      addToFooter("arrivalBM" + a, "arrival BM data for " + a);
     });
   }
   if (formData.vwapBM) {
     sot_foot_definition = sot_foot_definition.concat(sot_foot_vwap);
     sot_definition = sot_definition.concat(vwap_columns);
-    soiIds.forEach(function (a) {
-      addToFooter("vwap_" + a, "VWAP BM data for " + a);
+    soIds.forEach(function (a) {
+      addToFooter("vwapBM" + a, "VWAP BM data for " + a);
     });
   }
   if (formData.closeBM) {
     sot_foot_definition = sot_foot_definition.concat(sot_foot_close);
     sot_definition = sot_definition.concat(close_columns);
-    soiIds.forEach(function (a) {
-      addToFooter("close_" + a, "Close BM data for " + a);
+    soIds.forEach(function (a) {
+      addToFooter("closeBM" + a, "Close BM data for " + a);
     });
   }
   if (formData.customBM) {
     sot_foot_definition = sot_foot_definition.concat(sot_foot_custom);
     sot_definition = sot_definition.concat(custom_columns);
-    soiIds.forEach(function (a) {
-      addToFooter("custom_" + a, "Custom BM data for " + a);
+    soIds.forEach(function (a) {
+      addToFooter("customBM" + a, "Custom BM data for " + a);
     });
   }
 
+
+  // build the table and start requesting data
   var myTable = new dataTable("sot",sot_definition, "oid", sot_foot_definition, formatNumber);
 
+  ajaxPost('sources', soIds).then(JSON.parse).then(function (res) {
+    console.log("sources", res);
+    var pie = new d3pie("sourcesPie", getPieChart("Sources", res));
+    markCompleteFooter('sources');
+  }).catch(function (error) {
+    console.log("Failed!", error);
+  });
+
+  ajaxPost('venues', soIds).then(JSON.parse).then(function (res) {
+    console.log("venues", res);
+    var pie = new d3pie("venuesPie", getPieChart("Venues", res));
+    markCompleteFooter('venues');
+  }).catch(function (error) {
+    console.log("Failed!", error);
+  });
+
   //handle standard data
-  ajaxPost('baseSoData', soiIds).then(JSON.parse).then(function (response) {
+  ajaxPost('baseSoData', soIds).then(JSON.parse).then(function (response) {
     console.log("Success!", response);
     markCompleteFooter("sot_base");
     return myTable.populate(response);
-  }).then(function (res) {
-    // handle vwap
-    if (formData.vwapBM) {
-      console.log('handling wvap');
-      res.forEach(function (r) {
-        ajaxPost('vwapBM',r).then(JSON.parse).then(function (vwap) {
-          console.log("got vwap", vwap);
-          markCompleteFooter("vwap_" + vwap[0].oid);
-          myTable.populate(vwap);
-        });
-      });
-    }
-    // handle custom
-    if (formData.customBM) {
-      console.log('handling custom');
-      res.forEach(function (r) {
-        ajaxPost('customBM',r).then(JSON.parse).then(function (custom) {
-          console.log("got custom", custom);
-          markCompleteFooter("custom_" + custom[0].oid);
-          myTable.populate(custom);
-        });
-      });
-    }
-  }).then(function (res) {
-    console.log('');
-    console.log('All done');
+  }).then(function (response) {
+    handleBM(formData, 'arrivalBM', response, myTable);
+    handleBM(formData, 'vwapBM', response, myTable);
+    handleBM(formData, 'customBM', response, myTable);
+    handleBM(formData, 'closeBM', response, myTable);
   }).catch(function (error) {
     console.log("Failed!", error);
   });

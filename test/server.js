@@ -56,8 +56,55 @@ http.createServer(function (request, response) {
           response.end(JSON.stringify(responseData));
         });//, getDelay());
       }
+      else if(request.url === "/arrivalBM") {
+        console.log('returning arrival');
+        responseData.push({oid:postData.oid, arrivalPrice:70});
+        setTimeout(function() {
+          response.end(JSON.stringify(responseData));
+        });//, getDelay());
+      }
+      else if(request.url === "/closeBM") {
+        console.log('returning custom');
+        var today = new Date().toJSON().slice(0,10);
+        responseData.push({oid:postData.oid, closePrice:65, closeDate: today});
+        setTimeout(function() {
+          response.end(JSON.stringify(responseData));
+        });//, getDelay());
+      }
+      else if(request.url === "/venues") {
+        console.log('returning venues');
+        responseData = [
+          {
+            "label": "XSTO",
+            "value": 264131
+          },
+          {
+            "label": "CHIX",
+            "value": 218812
+          }
+        ];
+        setTimeout(function() {
+          response.end(JSON.stringify(responseData));
+        });//, getDelay());
+      }
+      else if(request.url === "/sources") {
+        console.log('returning sources');
+        responseData = [
+          {
+            "label": "Automatic",
+            "value": 264131
+          },
+          {
+            "label": "Dark",
+            "value": 218812
+          }
+        ];
+        setTimeout(function() {
+          response.end(JSON.stringify(responseData));
+        });//, getDelay());
+      }
       else {
-        response.writeHead(404, 'Resource Not Found', {'Content-Type': 'text/html'});
+        response.writeHead(404, 'Resource ' + request.url + ' not found', {'Content-Type': 'text/html'});
         response.end('<!doctype html><html><head><title>404</title></head><body>404: Resource Not Found</body></html>');
       }
     });

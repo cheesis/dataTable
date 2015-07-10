@@ -37,9 +37,8 @@ thead tr:last-child{
 #summaryt td:first-child{
     border-right: 1pt solid black;
 }
-#upper {
-    background: rgba(181, 181, 181, 0.8);
-    /*background: rgba(52, 152, 219, .8);*/
+#venuesAndSources > *{
+  display: inline;
 }
 
 @media print {
@@ -56,18 +55,21 @@ thead tr:last-child{
 
 }
 
+form {
+  height: 120px;
+}
 input:hover, textarea:hover,
 input:focus, textarea:focus {
     border-color: #C9C9C9;
 }
 
-form {
-  display: inline;
-}
-
 form > * {
   margin: 5px;
   display: inline;
+  vertical-align: bottom;
+}
+form textarea {
+  height: 100%;
 }
 
 #footer {
