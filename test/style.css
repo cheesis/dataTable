@@ -10,7 +10,8 @@ td {
   padding-left: 2em;
 }
 thead {
-    color: red;
+    /* color: red; */
+    font-weight: bold;
 }
 tfoot {
     color: blue;
@@ -34,11 +35,13 @@ tbody tr:nth-child(odd){
 thead tr:last-child{
     border-bottom: 1pt solid black;
 }
-#summaryt td:first-child{
-    border-right: 1pt solid black;
-}
+
 #venuesAndSources > *{
   display: inline;
+}
+#summary > table {
+ display: inline-block; 
+ vertical-align: top;
 }
 
 @media print {
@@ -65,7 +68,7 @@ input:focus, textarea:focus {
 
 form > * {
   margin: 5px;
-  display: inline;
+  display: inline-block;
   vertical-align: bottom;
 }
 form textarea {

@@ -2,7 +2,8 @@
 // send time for custom benchmark
 // preload form from get-request
 // complete columns for benchmarks
-// add benchmark table that summarizes benchmark data
+// add venues table
+// color positive and negative numbers
 
 /*
  MISC
@@ -69,7 +70,7 @@ function getPieChart (title, data) {
     "size": {
       "canvasWidth": 500,
       "canvasHeight": 500,
-      "pieOuterRadius": "90%"
+      "pieOuterRadius": "75%"
     },
     "data": {
       "sortOrder": "value-desc",
@@ -165,7 +166,7 @@ var arrival_columns = {
 var sot_foot = [
   {columnName:"quantity", calc:fsumQuantity, dataFormater: formatNumber0decimals}, // we need named functions if we want to define them after this
   {columnName:"avgPrice", calc:fAvgPrice},
-  {columnName:"tradedValue", calc:tradedValue}
+  {columnName:"tradedValue", calc:tradedValue, dataFormater: formatNumber0decimals}
 ];
 var sot_foot_vwap = [
   {columnName:"vwapPnL", calc:fsumVWAPPnL},
@@ -296,11 +297,55 @@ var st_data = [
  }
 
 // this table does not depend on use input so we build it right away
- var summaryTable = new dataTable("st",[st_left, st_right], "id", st_foot, formatNumber0decimals, ['sot']);
- summaryTable.populate(st_data);
+var summaryTable = new dataTable("st",[st_left, st_right], "id", st_foot, formatNumber0decimals, ['sot']); 
+summaryTable.populate(st_data);
 
 
-
+// 
+// define benchmark table
+// 
+var bmt_left = {
+    section: "",
+    columns: [
+          {
+            columnName:"bm_type",
+            displayName:"Benchmark"
+          }
+    ]
+};
+var bmt_right = {
+    section: "",
+    columns: [
+          { columnName:"pnl", displayName:"PnL", calc:bmtpnl },
+          { columnName:"pnlbps", displayName:"PnL BPS", calc:bmtpnlbps }
+    ]
+};
+function getSOTBM (things) {
+  switch (things.getColInRow("bm_type")) {
+    case "VWAP":
+      return 'vwap';
+    case "Close":
+      return 'close';
+    case "Arrival":
+      return 'arrival';
+    case "Custom":
+      return 'custom';
+    default:
+      throw "Oops, somebody can't code";
+  }
+}
+function bmtpnl (things) {
+  // we refer to a different table so we have to use dataTableSelector functions directly
+  // instead of the helper functions of the passed 'things' object
+  return dataTableSelector.colInFootRowSelector('sot', getSOTBM(things) + 'PnL');
+}
+function bmtpnlbps (things) {
+  // we refer to a different table so we have to use dataTableSelector functions directly
+  // instead of the helper functions of the passed 'things' object
+  return dataTableSelector.colInFootRowSelector('sot', getSOTBM(things) + 'PnLbps');
+}
+// declare the table name in global scope
+var benchmarkTable = {};
 
 //
 // here we handle the user input
@@ -363,12 +408,14 @@ function ajaxPost(url, jsonData) {
   });
 }
 
+// remove all contents of divs containing our tables so we can submit the form several times without weird results
 function removeChildren(query) {
   var set = document.querySelectorAll(query);
   var arr = Array.prototype.slice.call(set);
   arr.forEach(function(a) {a.remove();});
 }
 
+// add open ajax requests to the footer
 function addToFooter(id, item) {
   var bigBox = document.createElement("div");
   bigBox.id = "bigBox_" + id;
@@ -385,6 +432,7 @@ function addToFooter(id, item) {
   bigBox.appendChild(text);
 }
 
+// when we receive a response to our ajax call, this function marks the open request as complete in the footer
 function markCompleteFooter(id) {
   var littleBox = document.getElementById('littleBox_' + id);
   littleBox.classList.add('done');
@@ -392,7 +440,6 @@ function markCompleteFooter(id) {
   var bigBox = document.getElementById('bigBox_' + id);
   bigBox.classList.add('done');
 }
-
 
 // benchmark responses are all handled the same way
 function handleBM(formData, prop, response, myTable) {
@@ -410,6 +457,7 @@ function handleBM(formData, prop, response, myTable) {
 
 function formCB(formId) {
   removeChildren("#sot > *");
+  removeChildren("#bmt > *");
   removeChildren("#footer > *");
   removeChildren("#sourcesPie > *");
   removeChildren("#venuesPie > *");
@@ -422,6 +470,10 @@ function formCB(formId) {
   var sot_definition = [sot_base]; //contains one object (base colmns and section name)
   var sot_foot_definition = sot_foot; //contains columns as array
 
+  // build benchmark data according to which benchmarks have been selected
+  // TODO: handle the case where no benchmark was selected
+  var bmt_data = [];
+
   // update footer with expected ajax-calls
   addToFooter("sot_base", "base data");
   addToFooter("sources", "sources");
@@ -431,6 +483,7 @@ function formCB(formId) {
   if (formData.arrivalBM) {
     sot_foot_definition = sot_foot_definition.concat(sot_foot_arrival);
     sot_definition = sot_definition.concat(arrival_columns);
+    bmt_data.push({bm_type:"Arrival"});
     soIds.forEach(function (a) {
       addToFooter("arrivalBM" + a, "arrival BM data for " + a);
     });
@@ -438,6 +491,7 @@ function formCB(formId) {
   if (formData.vwapBM) {
     sot_foot_definition = sot_foot_definition.concat(sot_foot_vwap);
     sot_definition = sot_definition.concat(vwap_columns);
+    bmt_data.push({bm_type:"VWAP"});
     soIds.forEach(function (a) {
       addToFooter("vwapBM" + a, "VWAP BM data for " + a);
     });
@@ -445,6 +499,7 @@ function formCB(formId) {
   if (formData.closeBM) {
     sot_foot_definition = sot_foot_definition.concat(sot_foot_close);
     sot_definition = sot_definition.concat(close_columns);
+    bmt_data.push({bm_type:"Close"});
     soIds.forEach(function (a) {
       addToFooter("closeBM" + a, "Close BM data for " + a);
     });
@@ -452,14 +507,21 @@ function formCB(formId) {
   if (formData.customBM) {
     sot_foot_definition = sot_foot_definition.concat(sot_foot_custom);
     sot_definition = sot_definition.concat(custom_columns);
+    bmt_data.push({bm_type:"Custom"});
     soIds.forEach(function (a) {
       addToFooter("customBM" + a, "Custom BM data for " + a);
     });
   }
 
-
   // build the table and start requesting data
   var myTable = new dataTable("sot",sot_definition, "oid", sot_foot_definition, formatNumber);
+
+
+  var benchmarkTable = new dataTable("bmt",[bmt_left, bmt_right], "bm_type", [], formatNumber2decimals, ['sot']);
+  // populate the benchmark table so that it's calculated columns can start updating once data arrives
+  // we have to do this after defining sot because our calculated functions access it
+  benchmarkTable.populate(bmt_data);
+
 
   ajaxPost('sources', soIds).then(JSON.parse).then(function (res) {
     console.log("sources", res);
