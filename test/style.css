@@ -8,6 +8,7 @@ table, tr, th, td {
 }
 td {
   padding-left: 2em;
+  white-space: pre;
 }
 thead {
     /* color: red; */

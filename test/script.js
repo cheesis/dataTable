@@ -1,9 +1,11 @@
 // TODO:
-// send time for custom benchmark
+// send specific data for each benchmark
+// add start and end date time for each orderf
 // preload form from get-request
-// complete columns for benchmarks
 // add venues table
 // color positive and negative numbers
+// table.populate should detect if data has changed and keep running itself because calculated columns using the footer don't work now
+// a table without footer should not have a horizontal line at the bottom
 
 /*
  MISC
@@ -128,72 +130,107 @@ var sot_base = {
         , {columnName:"bs",displayName:"Buy/Sell"}
         , {columnName:"avgPrice",displayName:"Average Price"}
         , {columnName:"quantity",displayName:"Quantity", dataFormater: formatNumber0decimals}
-        , {columnName:"tradedValue",displayName:"Traded Value", calc:tradedValue}
+        , { columnName:"tradedValue",
+            displayName:"Traded Value", 
+            calc:function(things) {return things.getColInRow("avgPrice") * things.getColInRow("quantity");
+            },
+            dataFormater: formatNumber0decimals
+          }
+        // we need named functions if we want to define them after this but use them in calc
         , {columnName:"pctOfValue",displayName:"% of total value", calc:pctOfValue, dataFormater: formatNumber2decimals}
     ]
-};
+}
 var vwap_columns = {
     section: "VWAP",
     columns: [
          {columnName:'vwapAvgPrice',displayName:'Average Price'}
-        ,{columnName:'vwapVolume',displayName:'Volume'}
-        ,{columnName:'vwapPart',displayName:'Participation', calc:participation}
-        ,{columnName:'vwapPnL',displayName:'P&L', calc:pnl}
-        ,{columnName:'vwapPnLbps',displayName:'P&L Bps', calc:pnlbps}
+        ,{columnName:'vwapVolume',displayName:'Volume', dataFormater: formatNumber0decimals}
+        ,{columnName:'vwapPart',
+          displayName:'Participation', 
+          calc:function(things) {
+            return things.getColInRow("quantity")/things.getColInRow("vwapVolume")*100;
+            },
+          dataFormater: formatNumber2decimals
+          }
+        ,{columnName:'vwapPnL',displayName:'P&L', calc:function(things) {return pnl(things, "vwapAvgPrice");}, dataFormater: formatNumber0decimals}
+        ,{columnName:'vwapPnLbps',displayName:'P&L Bps', calc:function(things) {return pnlbps(things, "vwapPnL");}}
     ]
-};
+}
 var custom_columns = {
     section: "Custom",
     columns: [
-         {columnName:'customAvgPrice',displayName:'Average Price'}
+         {columnName:'customPrice',displayName:'Price'}
+        ,{columnName:'customTime',displayName:'Time'}
+        ,{columnName:'customPnL',displayName:'P&L', calc:function(things) {return pnl(things, "customPrice");}, dataFormater: formatNumber0decimals}
+        ,{columnName:'customPnLbps',displayName:'P&L Bps', calc:function(things) {return pnlbps(things, "customPnL");}}
     ]
-};
+}
 var close_columns = {
     section: "Close",
     columns: [
-         {columnName:'closePrice',displayName:'Closing Price'},
-         {columnName:'closeDate',displayName:'Closing Date'}
+         {columnName:'closePrice',displayName:'Closing Price'}
+        ,{columnName:'closeDate',displayName:'Closing Date'}
+        ,{columnName:'closePnL',displayName:'P&L', calc:function(things) {return pnl(things, "closePrice");}, dataFormater: formatNumber0decimals}
+        ,{columnName:'closePnLbps',displayName:'P&L Bps', calc:function(things) {return pnlbps(things, "closePnL");}}
     ]
-};
+}
 var arrival_columns = {
     section: "Arrival",
     columns: [
          {columnName:'arrivalPrice',displayName:'Arrival Price'}
+        ,{columnName:'arrivalPnL',displayName:'P&L', calc:function(things) {return pnl(things, "arrivalPrice");}, dataFormater: formatNumber0decimals}
+        ,{columnName:'arrivalPnLbps',displayName:'P&L Bps', calc:function(things) {return pnlbps(things, "arrivalPnL");}}
     ]
-};
+}
 
 //columns that should have a value in the footer
 var sot_foot = [
-  {columnName:"quantity", calc:fsumQuantity, dataFormater: formatNumber0decimals}, // we need named functions if we want to define them after this
-  {columnName:"avgPrice", calc:fAvgPrice},
-  {columnName:"tradedValue", calc:tradedValue, dataFormater: formatNumber0decimals}
+  {columnName:"quantity", 
+    calc:function(things) {return things.getCol("quantity").sum();}, 
+    dataFormater: formatNumber0decimals
+  },
+  {columnName:"avgPrice", 
+    calc:function(things) {
+      var quantities = things.getCol("quantity");
+      var prices = things.getCol("avgPrice");
+      return quantities.mul(prices).sum() / quantities.sum();
+    }
+  },
+  {columnName:"tradedValue", 
+    calc:function(things) {return things.getColInRow("avgPrice") * things.getColInRow("quantity");}, 
+    dataFormater: formatNumber0decimals
+  }
 ];
 var sot_foot_vwap = [
-  {columnName:"vwapPnL", calc:fsumVWAPPnL},
-  {columnName:"vwapPnLbps", calc:fVWAPPnLbps}
+  {columnName:"vwapPnL", calc:function(things) {return things.getCol("vwapPnL").sum();}, dataFormater: formatNumber0decimals},
+  {columnName:"vwapPnLbps", calc:function(things) {return pnlbps(things, "vwapPnL");}}
 ];
 
-var sot_foot_close = [],
-    sot_foot_custom = [],
-    sot_foot_arrival =[];
+var sot_foot_close = [
+  {columnName:"closePnL", calc:function(things) {return things.getCol("closePnL").sum();}, dataFormater: formatNumber0decimals},
+  {columnName:"closePnLbps", calc:function(things) {return pnlbps(things, "closePnL");}}
+],
+sot_foot_custom = [
+  {columnName:"customPnL", calc:function(things) {return things.getCol("customPnL").sum();}, dataFormater: formatNumber0decimals},
+  {columnName:"customPnLbps", calc:function(things) {return pnlbps(things, "customPnL");}}
+],
+sot_foot_arrival =[
+  {columnName:"arrivalPnL", calc:function(things) {return things.getCol("arrivalPnL").sum();}, dataFormater: formatNumber0decimals},
+  {columnName:"arrivalPnLbps", calc:function(things) {return pnlbps(things, "arrivalPnL");}}
+  
+];
 
-function tradedValue(things) {
-  return things.getColInRow("avgPrice") * things.getColInRow("quantity");
-}
 function pctOfValue(things) {
   // var totalValue = things.getColInFootRow("avgPrice") * things.getColInFootRow("quantity");
   var totalValue = things.getCol("avgPrice").mul(things.getCol("quantity")).sum();
   return things.getColInRow("tradedValue") / totalValue * 100;
 }
-function participation(things) {
-    return things.getColInRow("quantity")/things.getColInRow("vwapVolume")*100;
-}
-function pnl(things) {
+function pnl(things, column) {
   var difference = 0;
   if (things.getColInRow("bs") == "B") {
-    difference = things.getColInRow("vwapAvgPrice") - things.getColInRow("avgPrice");
+    difference = things.getColInRow(column) - things.getColInRow("avgPrice");
   } else if(things.getColInRow("bs") == "S"){
-    difference = things.getColInRow("avgPrice") - things.getColInRow("vwapAvgPrice");
+    difference = things.getColInRow("avgPrice") - things.getColInRow(column);
   }
   else {
     difference = 0;
@@ -201,26 +238,8 @@ function pnl(things) {
   }
   return things.getColInRow("quantity") * difference;
 }
-function pnlbps(things) {
-  return things.getColInRow("vwapPnL") / (things.getColInRow("avgPrice") * things.getColInRow("quantity")) * 10000;
-}
-function fVWAPPnLbps(things) {
-  return things.getColInFootRow("vwapPnL") / (things.getColInFootRow("avgPrice") * things.getColInFootRow("quantity")) * 10000;
-}
-
-function fsumQuantity(things) {
-    //this calculates the sum of the column values
-    return things.getCol("quantity").sum();
-};
-function fsumVWAPPnL(things) {
-  return things.getCol("vwapPnL").sum();
-};
-
-function fAvgPrice(things){
-    var quantities = things.getCol("quantity");
-    var prices = things.getCol("avgPrice");
-
-    return quantities.mul(prices).sum() / quantities.sum();
+function pnlbps(things, column) {
+  return things.getColInRow(column) / (things.getColInRow("avgPrice") * things.getColInRow("quantity")) * 10000;
 }
 
 /*
@@ -281,20 +300,18 @@ function calcNBV(things) {
   }
 }
 
-var st_data = [
-   {id:"Buy"},
-   {id:"Sell"}
- ];
- var st_foot = [ {columnName:"nbr", calc:fCount}, // we need named functions if we want to define them after this
-                 {columnName:"nbv", calc:fNBV}
-               ];
+var st_data = [ {id:"Buy"}, {id:"Sell"} ];
+var st_foot = [
+  {
+    columnName:"nbr", 
+    calc:function(things) { return things.getCol("nbr").sum(); }
+  }, // we need named functions if we want to define them after this
+  {
+    columnName:"nbv", 
+    calc:function(things) { return things.getCol("nbv").sum(); }
+  }
+];
 
- function fNBV(things) {
-   return things.getCol("nbv").sum();
- };
- function fCount(things) {
-    return things.getCol("nbr").sum();
- }
 
 // this table does not depend on use input so we build it right away
 var summaryTable = new dataTable("st",[st_left, st_right], "id", st_foot, formatNumber0decimals, ['sot']); 
@@ -316,8 +333,20 @@ var bmt_left = {
 var bmt_right = {
     section: "",
     columns: [
-          { columnName:"pnl", displayName:"PnL", calc:bmtpnl },
-          { columnName:"pnlbps", displayName:"PnL BPS", calc:bmtpnlbps }
+          { columnName:"pnl", 
+            displayName:"PnL", 
+            calc:function(things) {
+              // we select from another table so have to use  dataTableSelector directly and not 'things'
+              return dataTableSelector.colInFootRowSelector('sot', getSOTBM(things) + 'PnL');
+            },
+            dataFormater: formatNumber0decimals
+          },
+          { columnName:"pnlbps", 
+            displayName:"PnL BPS", 
+            calc:function(things) {
+              return dataTableSelector.colInFootRowSelector('sot', getSOTBM(things) + 'PnLbps');
+            }
+          }
     ]
 };
 function getSOTBM (things) {
@@ -334,16 +363,7 @@ function getSOTBM (things) {
       throw "Oops, somebody can't code";
   }
 }
-function bmtpnl (things) {
-  // we refer to a different table so we have to use dataTableSelector functions directly
-  // instead of the helper functions of the passed 'things' object
-  return dataTableSelector.colInFootRowSelector('sot', getSOTBM(things) + 'PnL');
-}
-function bmtpnlbps (things) {
-  // we refer to a different table so we have to use dataTableSelector functions directly
-  // instead of the helper functions of the passed 'things' object
-  return dataTableSelector.colInFootRowSelector('sot', getSOTBM(things) + 'PnLbps');
-}
+
 // declare the table name in global scope
 var benchmarkTable = {};
 
@@ -446,6 +466,7 @@ function handleBM(formData, prop, response, myTable) {
   if (formData[prop]) {
     console.log('handling ' + prop);
     response.forEach(function (r) {
+      // TODO send specific data for each benchmark
       ajaxPost(prop,r).then(JSON.parse).then(function (propResponse) {
         console.log("got",prop , propResponse);
         markCompleteFooter(prop + propResponse[0].oid);
@@ -552,4 +573,5 @@ function formCB(formId) {
   }).catch(function (error) {
     console.log("Failed!", error);
   });
+  console.log()
 }

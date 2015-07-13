@@ -51,7 +51,8 @@ http.createServer(function (request, response) {
       }
       else if(request.url === "/customBM") {
         console.log('returning custom');
-        responseData.push({oid:postData.oid, customAvgPrice:60});
+        responseData.push({oid:postData.oid, customPrice:60, customTime:postData.customTime});
+        console.log(responseData);
         setTimeout(function() {
           response.end(JSON.stringify(responseData));
         });//, getDelay());
