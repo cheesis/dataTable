@@ -1,6 +1,4 @@
 // TODO:
-// send specific data for each benchmark
-// add start and end date time for each orderf
 // preload form from get-request
 // add venues table
 // color positive and negative numbers
@@ -129,6 +127,8 @@ var sot_base = {
           {columnName:"oid",displayName:"Sales Order Ids"}
         , {columnName:"bs",displayName:"Buy/Sell"}
         , {columnName:"avgPrice",displayName:"Average Price"}
+        , {columnName:"start",displayName:"Arrival"}
+        , {columnName:"stop",displayName:"End"}
         , {columnName:"quantity",displayName:"Quantity", dataFormater: formatNumber0decimals}
         , { columnName:"tradedValue",
             displayName:"Traded Value", 
@@ -313,11 +313,6 @@ var st_foot = [
 ];
 
 
-// this table does not depend on use input so we build it right away
-var summaryTable = new dataTable("st",[st_left, st_right], "id", st_foot, formatNumber0decimals, ['sot']); 
-summaryTable.populate(st_data);
-
-
 // 
 // define benchmark table
 // 
@@ -461,13 +456,33 @@ function markCompleteFooter(id) {
   bigBox.classList.add('done');
 }
 
+// depending on the benchmark we query we need to put together different queries
+function getBMrequest (benchmark, formData, baseResponse) {
+  switch (benchmark) {
+    case 'vwapBM':
+      return {
+        oid:  baseResponse.oid,
+        start:baseResponse.start,
+        stop: baseResponse.stop
+      };
+    case 'customBM':
+      return {
+        oid:  baseResponse.oid,
+        customTime: formData.customTime
+      };
+    default: //arrivalBM, closeBM
+      return baseResponse;
+  }
+}
+
 // benchmark responses are all handled the same way
 function handleBM(formData, prop, response, myTable) {
   if (formData[prop]) {
     console.log('handling ' + prop);
     response.forEach(function (r) {
       // TODO send specific data for each benchmark
-      ajaxPost(prop,r).then(JSON.parse).then(function (propResponse) {
+      var request = getBMrequest(prop, formData, r);
+      ajaxPost(prop,request).then(JSON.parse).then(function (propResponse) {
         console.log("got",prop , propResponse);
         markCompleteFooter(prop + propResponse[0].oid);
         myTable.populate(propResponse);
@@ -478,6 +493,7 @@ function handleBM(formData, prop, response, myTable) {
 
 function formCB(formId) {
   removeChildren("#sot > *");
+  removeChildren("#st > *");
   removeChildren("#bmt > *");
   removeChildren("#footer > *");
   removeChildren("#sourcesPie > *");
@@ -495,7 +511,7 @@ function formCB(formId) {
   // TODO: handle the case where no benchmark was selected
   var bmt_data = [];
 
-  // update footer with expected ajax-calls
+  // update footer with expected ajax-calls - these we do always
   addToFooter("sot_base", "base data");
   addToFooter("sources", "sources");
   addToFooter("venues", "venues");
@@ -537,6 +553,9 @@ function formCB(formId) {
   // build the table and start requesting data
   var myTable = new dataTable("sot",sot_definition, "oid", sot_foot_definition, formatNumber);
 
+  // this table does not depend on use input so we build it right away
+  var summaryTable = new dataTable("st",[st_left, st_right], "id", st_foot, formatNumber0decimals, ['sot']); 
+  summaryTable.populate(st_data);
 
   var benchmarkTable = new dataTable("bmt",[bmt_left, bmt_right], "bm_type", [], formatNumber2decimals, ['sot']);
   // populate the benchmark table so that it's calculated columns can start updating once data arrives

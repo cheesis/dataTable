@@ -36,7 +36,7 @@ http.createServer(function (request, response) {
       var responseData = [];
       if (request.url === "/baseSoData") {
         postData.forEach(function (orderId) {
-          responseData.push({oid:orderId, avgPrice:50.456, quantity:10000, bs:"S", NBV:1230});
+          responseData.push({oid:orderId, start:"2015-07-14 12:00:00", stop:"2015-07-14  16:45:00", avgPrice:50.456, quantity:10000, bs:"S", NBV:1230});
         });
         setTimeout(function() {
           response.end(JSON.stringify(responseData));
