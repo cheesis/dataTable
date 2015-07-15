@@ -3,7 +3,7 @@
 // add venues table
 // color positive and negative numbers
 // table.populate should detect if data has changed and keep running itself because calculated columns using the footer don't work now
-// a table without footer should not have a horizontal line at the bottom
+// enable hitting enter in any element except for textarea to submit
 
 /*
  MISC
@@ -225,6 +225,7 @@ function pctOfValue(things) {
   var totalValue = things.getCol("avgPrice").mul(things.getCol("quantity")).sum();
   return things.getColInRow("tradedValue") / totalValue * 100;
 }
+
 function pnl(things, column) {
   var difference = 0;
   if (things.getColInRow("bs") == "B") {
@@ -238,6 +239,7 @@ function pnl(things, column) {
   }
   return things.getColInRow("quantity") * difference;
 }
+
 function pnlbps(things, column) {
   return things.getColInRow(column) / (things.getColInRow("avgPrice") * things.getColInRow("quantity")) * 10000;
 }
@@ -556,10 +558,10 @@ function formCB(formId) {
   // this table does not depend on use input so we build it right away
   var summaryTable = new dataTable("st",[st_left, st_right], "id", st_foot, formatNumber0decimals, ['sot']); 
   summaryTable.populate(st_data);
-
-  var benchmarkTable = new dataTable("bmt",[bmt_left, bmt_right], "bm_type", [], formatNumber2decimals, ['sot']);
+  
   // populate the benchmark table so that it's calculated columns can start updating once data arrives
   // we have to do this after defining sot because our calculated functions access it
+  var benchmarkTable = new dataTable("bmt",[bmt_left, bmt_right], "bm_type", [], formatNumber2decimals, ['sot']);
   benchmarkTable.populate(bmt_data);
 
 

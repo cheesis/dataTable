@@ -36,7 +36,6 @@ tbody tr:nth-child(odd){
 thead tr:last-child{
     border-bottom: 1pt solid black;
 }
-
 #venuesAndSources > *{
   display: inline;
 }

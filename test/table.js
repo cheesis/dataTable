@@ -27,7 +27,9 @@ function dataTable(tableId, columns, indexColumn, footer_definition, numberForma
   this._flatColumns = this._getFlatColumns(columns);// only the sql column names
   this._rightBordersAt = this._getRightBorderIndices(columns);// contains indexes where right borders should be applied
   this._setBorders();
-  this._addFooter();
+  // passing either undefined or [] should not create a footer
+  if (footer_definition && footer_definition.length > 0)
+    this._addFooter();
 
   //dispatch this event with table as source when data got populated
   //dependent tables can listen for it and repopulate
