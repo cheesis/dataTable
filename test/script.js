@@ -1,5 +1,5 @@
 // TODO:
-// preload form from get-request
+// preload form from get-request - this needs a better server than the node test server
 // add venues table
 // color positive and negative numbers
 // table.populate should detect if data has changed and keep running itself because calculated columns using the footer don't work now
@@ -116,6 +116,13 @@ function getPieChart (title, data) {
     }
   };
 }
+
+
+// declare the table names in global scope
+var summaryTable = {};
+var benchmarkTable = {};
+var salesOrderTable = {};
+
 
 /*
     here we define the sales order table
@@ -361,9 +368,6 @@ function getSOTBM (things) {
   }
 }
 
-// declare the table name in global scope
-var benchmarkTable = {};
-
 //
 // here we handle the user input
 //
@@ -552,16 +556,16 @@ function formCB(formId) {
     });
   }
 
-  // build the table and start requesting data
-  var myTable = new dataTable("sot",sot_definition, "oid", sot_foot_definition, formatNumber);
-
   // this table does not depend on use input so we build it right away
-  var summaryTable = new dataTable("st",[st_left, st_right], "id", st_foot, formatNumber0decimals, ['sot']); 
+  summaryTable = new dataTable("st",[st_left, st_right], "id", st_foot, formatNumber0decimals, ['sot']); 
   summaryTable.populate(st_data);
+  
+  // build the table and start requesting data
+  salesOrderTable = new dataTable("sot",sot_definition, "oid", sot_foot_definition, formatNumber);
   
   // populate the benchmark table so that it's calculated columns can start updating once data arrives
   // we have to do this after defining sot because our calculated functions access it
-  var benchmarkTable = new dataTable("bmt",[bmt_left, bmt_right], "bm_type", [], formatNumber2decimals, ['sot']);
+  benchmarkTable = new dataTable("bmt",[bmt_left, bmt_right], "bm_type", [], formatNumber2decimals, ['sot']);
   benchmarkTable.populate(bmt_data);
 
 
@@ -585,12 +589,12 @@ function formCB(formId) {
   ajaxPost('baseSoData', soIds).then(JSON.parse).then(function (response) {
     console.log("Success!", response);
     markCompleteFooter("sot_base");
-    return myTable.populate(response);
+    return salesOrderTable.populate(response);
   }).then(function (response) {
-    handleBM(formData, 'arrivalBM', response, myTable);
-    handleBM(formData, 'vwapBM', response, myTable);
-    handleBM(formData, 'customBM', response, myTable);
-    handleBM(formData, 'closeBM', response, myTable);
+    handleBM(formData, 'arrivalBM', response, salesOrderTable);
+    handleBM(formData, 'vwapBM', response, salesOrderTable);
+    handleBM(formData, 'customBM', response, salesOrderTable);
+    handleBM(formData, 'closeBM', response, salesOrderTable);
   }).catch(function (error) {
     console.log("Failed!", error);
   });

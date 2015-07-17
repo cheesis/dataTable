@@ -21,6 +21,9 @@ tfoot {
 table {
   margin: 2em;
 }
+td .green {
+  color: green;
+}
 .table_header_toprow {
     text-align: center;
 }

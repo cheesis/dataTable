@@ -31,6 +31,9 @@ function dataTable(tableId, columns, indexColumn, footer_definition, numberForma
   if (footer_definition && footer_definition.length > 0)
     this._addFooter();
 
+  // save reference to data table on table in the DOM so that we can access it from the cell-callbacks, i.e. blur
+  this._tableRef.__data__ = this;
+
   //dispatch this event with table as source when data got populated
   //dependent tables can listen for it and repopulate
   //the event has the table id in the name because other populate events will fire in the callback
@@ -107,7 +110,6 @@ dataTable.prototype._addFooter = function(){
 
 dataTable.prototype._formatData = function (col, d) {
   if (col.hasOwnProperty('dataFormater')) {
-    console.log('dataFormater on column found');
     return col.dataFormater(d);
   }
   else if (this._dataFormatter)
@@ -162,10 +164,14 @@ dataTable.prototype.populate = function(data){
                 newCell.dataset.columnName = column.columnName;
                 newCell.__data__ = d[column.columnName];
                 newCell.setAttribute("contentEditable", true);
-                theTableInstance = this; // save for later use, 'this' will be something else
+                // theTableInstance = this; // save for later use, 'this' will be something else
                 newCell.addEventListener("blur", function () {
                   this.__data__ = this.innerHTML;
+                  // TODO find tabel with while loop
+                  var tableId = this.parentElement.parentElement.parentElement.id
+                  var theTableInstance = document.getElementById(tableId).__data__;
                   this.innerHTML = theTableInstance._formatData(column, this.__data__);
+                  console.log(theTableInstance);
                   theTableInstance.populate([]); //recalculate values
                 });
                 newCell.addEventListener("focus", function () {
