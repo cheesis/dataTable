@@ -40,7 +40,8 @@ thead tr:last-child{
     border-bottom: 1pt solid black;
 }
 #venuesAndSources > *{
-  display: inline;
+  display: inline-block;
+  vertical-align: top;
 }
 #summary > table {
  display: inline-block; 

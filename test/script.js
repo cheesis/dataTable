@@ -1,6 +1,6 @@
 // TODO:
 // preload form from get-request - this needs a better server than the node test server
-// add venues table
+// add section headlines
 // color positive and negative numbers
 
 /*
@@ -366,6 +366,29 @@ function getSOTBM (things) {
   }
 }
 
+// 
+// define venues table
+// 
+var vt_columns = {
+    section: "",
+    columns: [
+          {
+            columnName:"label",
+            displayName:"Venue"
+          },
+          {
+            columnName:"value",
+            displayName:"Traded Value"
+          }
+    ]
+}
+var vt_foot = [
+  {
+    columnName:"value", 
+    calc:function(things) { return things.getCol("value").sum(); }
+  }
+];
+
 //
 // here we handle the user input
 //
@@ -504,6 +527,7 @@ function formCB(event, formId) {
   removeChildren("#footer > *");
   removeChildren("#sourcesPie > *");
   removeChildren("#venuesPie > *");
+  removeChildren("#vt > *");
 
   var formData = getFormData(formId);
   var soIds = formData.soids; //this is sent to query 1
@@ -568,6 +592,7 @@ function formCB(event, formId) {
   benchmarkTable = new dataTable("bmt",[bmt_left, bmt_right], "bm_type", [], formatNumber2decimals, ['sot']);
   benchmarkTable.populate(bmt_data);
 
+  var venueTable = new dataTable("vt",[vt_columns], "label", vt_foot, formatNumber0decimals);
 
   ajaxPost('sources', soIds).then(JSON.parse).then(function (res) {
     console.log("sources", res);
@@ -580,6 +605,7 @@ function formCB(event, formId) {
   ajaxPost('venues', soIds).then(JSON.parse).then(function (res) {
     console.log("venues", res);
     var pie = new d3pie("venuesPie", getPieChart("Venues", res));
+    venueTable.populate(res);
     markCompleteFooter('venues');
   }).catch(function (error) {
     console.log("Failed!", error);
