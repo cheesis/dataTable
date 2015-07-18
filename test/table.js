@@ -163,7 +163,8 @@ dataTable.prototype.populate = function(data){
                   // calculated columns are not editable
                   if (!column.hasOwnProperty('calc')) newCell.setAttribute("contentEditable", true);
                   newCell.addEventListener("blur", function () {
-                    this.__data__ = this.innerHTML;
+                    // dangerous but fun
+                    this.__data__ = eval(this.innerHTML);
                     // TODO find table with while loop
                     var tableId = this.parentElement.parentElement.parentElement.id;
                     var theTableInstance = document.getElementById(tableId).__data__;
