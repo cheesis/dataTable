@@ -1,7 +1,6 @@
 /* TODO
 rewrite dataTableSelector as module pattern singleton to have private functions
 _addFooter is duplicate code of body population ... or so
-possibly make only columns editable where data is not calculated
 */
 
 /*
@@ -161,12 +160,12 @@ dataTable.prototype.populate = function(data){
                   newCell.appendChild(document.createTextNode(this._formatData(column, d[column.columnName]))); //e.g. d.oid here written as d['oid']
                   newCell.dataset.columnName = column.columnName;
                   newCell.__data__ = d[column.columnName];
-                  newCell.setAttribute("contentEditable", true);
-                  // theTableInstance = this; // save for later use, 'this' will be something else
+                  // calculated columns are not editable
+                  if (!column.hasOwnProperty('calc')) newCell.setAttribute("contentEditable", true);
                   newCell.addEventListener("blur", function () {
                     this.__data__ = this.innerHTML;
                     // TODO find table with while loop
-                    var tableId = this.parentElement.parentElement.parentElement.id
+                    var tableId = this.parentElement.parentElement.parentElement.id;
                     var theTableInstance = document.getElementById(tableId).__data__;
                     this.innerHTML = theTableInstance._formatData(column, this.__data__);
                     // console.log(theTableInstance);
