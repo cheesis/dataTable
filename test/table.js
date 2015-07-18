@@ -1,7 +1,5 @@
 /* TODO
 rewrite dataTableSelector as module pattern singleton to have private functions
-if you have column values that depend on a calculated footer value then you have to call populate (at lest) twice
-  once with the values that will populate the footer and then without values to recalculate the body values
 _addFooter is duplicate code of body population ... or so
 possibly make only columns editable where data is not calculated
 */
@@ -44,7 +42,7 @@ function dataTable(tableId, columns, indexColumn, footer_definition, numberForma
   if (listenToTables){
     listenToTables.forEach(function (t) {
       document.getElementById(t).addEventListener('populate_' + t, function () {
-        console.log(t + ' callback fires');
+        console.log(tableRefVariable._tableId + ' triggers on ' + t + ' populate callback');
         tableRefVariable.populate([]);
       })
     });
@@ -135,95 +133,114 @@ dataTable.prototype._populateFooter = function(){
     }, this);
 }
 dataTable.prototype.populate = function(data){
-  //first we handle the data that we get directly from the source
-  var tbody = new Object();
-  if (this._tableRef.tBodies.length == 0) {
-      tbody = this._tableRef.appendChild(document.createElement('tbody'));
-  } else {
-      tbody = this._tableRef.tBodies[0];
-  }
+    //first we handle the data that we get directly from the source
+    var tbody = new Object();
+    if (this._tableRef.tBodies.length == 0) {
+        tbody = this._tableRef.appendChild(document.createElement('tbody'));
+    } else {
+        tbody = this._tableRef.tBodies[0];
+    }
 
-  var bodyrows = tbody.rows,
-      rowIds = []; //this array contains the data attribute id of each row
-  for (i = 0; i < bodyrows.length; i++) {
-      rowIds.push(bodyrows[i].dataset.id);
-  }
+    var bodyrows = tbody.rows,
+        rowIds = []; //this array contains the data attribute id of each row
+    for (i = 0; i < bodyrows.length; i++) {
+        rowIds.push(bodyrows[i].dataset.id);
+    }
 
-  //get row that contains the id
-  data.forEach(function(d,i){
-      var id = d[this._rowIndex];
-      var rowNbr = rowIds.indexOf(id);
-      if (rowNbr == -1){
-          //create
-          var bodyRow = tbody.insertRow();
-          bodyRow.dataset.id = id;
-          this._columns.forEach(function(section){
-            section.columns.forEach(function(column){
-                var newCell  = bodyRow.insertCell();
-                newCell.appendChild(document.createTextNode(this._formatData(column, d[column.columnName]))); //e.g. d.oid here written as d['oid']
-                newCell.dataset.columnName = column.columnName;
-                newCell.__data__ = d[column.columnName];
-                newCell.setAttribute("contentEditable", true);
-                // theTableInstance = this; // save for later use, 'this' will be something else
-                newCell.addEventListener("blur", function () {
-                  this.__data__ = this.innerHTML;
-                  // TODO find tabel with while loop
-                  var tableId = this.parentElement.parentElement.parentElement.id
-                  var theTableInstance = document.getElementById(tableId).__data__;
-                  this.innerHTML = theTableInstance._formatData(column, this.__data__);
-                  console.log(theTableInstance);
-                  theTableInstance.populate([]); //recalculate values
-                });
-                newCell.addEventListener("focus", function () {
-                  this.innerHTML = this.__data__;
-                });
+    //get row that contains the id
+    data.forEach(function(d,i){
+        var id = d[this._rowIndex];
+        var rowNbr = rowIds.indexOf(id);
+        if (rowNbr == -1){
+            //create
+            var bodyRow = tbody.insertRow();
+            bodyRow.dataset.id = id;
+            this._columns.forEach(function(section){
+              section.columns.forEach(function(column){
+                  var newCell  = bodyRow.insertCell();
+                  newCell.appendChild(document.createTextNode(this._formatData(column, d[column.columnName]))); //e.g. d.oid here written as d['oid']
+                  newCell.dataset.columnName = column.columnName;
+                  newCell.__data__ = d[column.columnName];
+                  newCell.setAttribute("contentEditable", true);
+                  // theTableInstance = this; // save for later use, 'this' will be something else
+                  newCell.addEventListener("blur", function () {
+                    this.__data__ = this.innerHTML;
+                    // TODO find table with while loop
+                    var tableId = this.parentElement.parentElement.parentElement.id
+                    var theTableInstance = document.getElementById(tableId).__data__;
+                    this.innerHTML = theTableInstance._formatData(column, this.__data__);
+                    // console.log(theTableInstance);
+                    theTableInstance.populate([]); //recalculate values
+                  });
+                  newCell.addEventListener("focus", function () {
+                    this.innerHTML = this.__data__;
+                  });
+              }, this);
             }, this);
-          }, this);
-      } else {
-          //update row
-          Object.getOwnPropertyNames(d).forEach(function(prop, pindex){
-              if (prop != this._rowIndex) //we don't want to update the index
-              {
-                this._columns.forEach(function(section){
-                  section.columns.forEach(function(column){
-                    if (d.hasOwnProperty(column.columnName)){
-                      var columnIndex = this._flatColumns.indexOf(column.columnName);
-                      bodyrows[rowNbr].cells[columnIndex].innerHTML = this._formatData(column, d[column.columnName]);
-                      bodyrows[rowNbr].cells[columnIndex].__data__ = d[column.columnName];
-                    }
+        } else {
+            //update row
+            Object.getOwnPropertyNames(d).forEach(function(prop, pindex){
+                if (prop != this._rowIndex) //we don't want to update the index
+                {
+                  this._columns.forEach(function(section){
+                    section.columns.forEach(function(column){
+                      if (d.hasOwnProperty(column.columnName)){
+                        var columnIndex = this._flatColumns.indexOf(column.columnName);
+                        bodyrows[rowNbr].cells[columnIndex].innerHTML = this._formatData(column, d[column.columnName]);
+                        bodyrows[rowNbr].cells[columnIndex].__data__ = d[column.columnName];
+                      }
+                    }, this);
                   }, this);
-                }, this);
-              }
-          }, this);
-      }
-  }, this); //yes,very confusing. if we don't pass what 'this' should be then it will be the global object aka Window
-            // thank you javascript
-
-  //compute values for calculated columns
-  //almost same code as _populateFooter - bad style
-  this._columns.forEach(function(section){
-    section.columns.forEach(function(column){
-      if (column.hasOwnProperty('calc')){
-        var columnIndex = this._flatColumns.indexOf(column.columnName);
-        for (i = 0; i < bodyrows.length; i++) {
-          var things = {
-            getColInFootRow: dataTableSelector.colInFootRowSelector.bind(this, this._tableId),
-            getColInRow: dataTableSelector.colInBodyRowSelector.bind(this, this._tableId, bodyrows[i].dataset.id),
-            getColInBodyRow: dataTableSelector.colInBodyRowSelector.bind(this, this._tableId),
-            getCol: dataTableSelector.columnSelector.bind(this, this._tableId)
-          };
-          var calculatedValue = column.calc(things);
-          bodyrows[i].cells[columnIndex].innerHTML = this._formatData(column, calculatedValue);
-          bodyrows[i].cells[columnIndex].__data__ = calculatedValue;
+                }
+            }, this);
         }
-      }
+    }, this); //yes,very confusing. if we don't pass what 'this' should be then it will be the global object aka Window
+              // thank you javascript
+
+  // there might be long chains of references in a table, so we update until nothing changes anymore
+  // an example would be a cell value that depends on the footer of another column
+  //then there might be a third column that depends an the previous column footer so you'd have to update 3 times
+  // we put a safegueard of a 1000 updates
+  var changed = true;
+  for (var pop_i = 0; pop_i < 100 && changed; pop_i++) {
+    changed = false; // did values in this table change? true: run again
+
+    //compute values for calculated columns
+    //almost same code as _populateFooter - bad style
+    this._columns.forEach(function(section){
+      section.columns.forEach(function(column){
+        if (column.hasOwnProperty('calc')){
+          var columnIndex = this._flatColumns.indexOf(column.columnName);
+          for (i = 0; i < bodyrows.length; i++) {
+            var things = {
+              getColInFootRow: dataTableSelector.colInFootRowSelector.bind(this, this._tableId),
+              getColInRow: dataTableSelector.colInBodyRowSelector.bind(this, this._tableId, bodyrows[i].dataset.id),
+              getColInBodyRow: dataTableSelector.colInBodyRowSelector.bind(this, this._tableId),
+              getCol: dataTableSelector.columnSelector.bind(this, this._tableId)
+            };
+            var calculatedValue = column.calc(things);
+            if (bodyrows[i].cells[columnIndex].__data__ != calculatedValue  // NaN != NaN is false, so if we can't computer
+                && !isNaN(bodyrows[i].cells[columnIndex].__data__)         // because not all data is there then we'll keep running 
+                && !isNaN(calculatedValue)) {                               // the opulate loop which we don't want nothing changed if NaN is still NaN
+              // console.log(bodyrows[i].cells[columnIndex].__data__ +' is not '+ calculatedValue);
+              changed = true; // a calculated value changed which might impact other calculated values so we run another iteration of populate()
+            }
+            bodyrows[i].cells[columnIndex].innerHTML = this._formatData(column, calculatedValue);
+            bodyrows[i].cells[columnIndex].__data__ = calculatedValue;
+          }
+        }
+      }, this);
     }, this);
-  }, this);
 
 
-  // rest
-  this._populateFooter();
-  this._setBorders();
+    // rest
+    this._populateFooter();
+    this._setBorders();
+
+    console.log('iteration ' + pop_i +' for table ' + this._tableId);
+    if (pop_i > 90) console.error(this._tableId + ' ran populate over 90 times consecutively');
+  };//update loop
+
   this._tableRef.dispatchEvent(this.populateEvent);
 
   return data; //return the data so we can use it in a promise.then() method

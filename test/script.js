@@ -2,7 +2,6 @@
 // preload form from get-request - this needs a better server than the node test server
 // add venues table
 // color positive and negative numbers
-// table.populate should detect if data has changed and keep running itself because calculated columns using the footer don't work now
 // enable hitting enter in any element except for textarea to submit
 
 /*
@@ -228,8 +227,8 @@ sot_foot_arrival =[
 ];
 
 function pctOfValue(things) {
-  // var totalValue = things.getColInFootRow("avgPrice") * things.getColInFootRow("quantity");
-  var totalValue = things.getCol("avgPrice").mul(things.getCol("quantity")).sum();
+  var totalValue = things.getColInFootRow("avgPrice") * things.getColInFootRow("quantity");
+  // var totalValue = things.getCol("avgPrice").mul(things.getCol("quantity")).sum();
   return things.getColInRow("tradedValue") / totalValue * 100;
 }
 
