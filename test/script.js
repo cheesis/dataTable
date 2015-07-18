@@ -2,7 +2,6 @@
 // preload form from get-request - this needs a better server than the node test server
 // add venues table
 // color positive and negative numbers
-// enable hitting enter in any element except for textarea to submit
 
 /*
  MISC
@@ -496,7 +495,9 @@ function handleBM(formData, prop, response, myTable) {
   }
 }
 
-function formCB(formId) {
+function formCB(event, formId) {
+  event.stopPropagation(); // don't submit
+  event.preventDefault();
   removeChildren("#sot > *");
   removeChildren("#st > *");
   removeChildren("#bmt > *");
