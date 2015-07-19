@@ -164,7 +164,7 @@ dataTable.prototype.populate = function(data){
                   if (!column.hasOwnProperty('calc')) newCell.setAttribute("contentEditable", true);
                   newCell.addEventListener("blur", function () {
                     // dangerous but fun
-                    this.__data__ = eval(this.innerHTML);
+                    this.__data__ = this.innerHTML;
                     // TODO find table with while loop
                     var tableId = this.parentElement.parentElement.parentElement.id;
                     var theTableInstance = document.getElementById(tableId).__data__;

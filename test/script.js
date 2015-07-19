@@ -15,6 +15,11 @@ Array.prototype.mul = function(arr) {
     return arr[index] * x;
   });
 }
+Array.prototype.unique = function() {
+  return this.filter(function(x, i) {
+    return this.indexOf(x) === i
+  }, this)
+}
 
 // number formatting
 numeral.language('sv', {
@@ -530,7 +535,7 @@ function formCB(event, formId) {
   removeChildren("#vt > *");
 
   var formData = getFormData(formId);
-  var soIds = formData.soids; //this is sent to query 1
+  var soIds = formData.soids.unique(); //this is sent to query 1
 
   // build sales order table according to user selection
   // columns that are always present
