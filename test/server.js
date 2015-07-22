@@ -110,8 +110,14 @@ http.createServer(function (request, response) {
       }
     });
   } else {
+    // with nothing given, look for index.html
+    if (request.url == '/') {
+      request.url = '/index.html';
+    }
+
     //don't read the first letter, it's '/', which will make node look at C:\
     var html = fs.readFileSync(request.url.substr(1));
+
     if (request.url.endsWith('html')) {
       response.writeHead(200, {'Content-Type': 'text/html'});
     } else if (request.url.endsWith('css')) {
