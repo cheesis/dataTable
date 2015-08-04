@@ -2,9 +2,9 @@
 // preload form from get-request - this needs a better server than the node test server
 // add section headlines
 // color positive and negative numbers
-// rename test.html to index.html, change in server that / looks up index.html
 // handle timezones
 // handle currencies
+// we shouldn't expect arrays as post responses
 
 /*
  MISC

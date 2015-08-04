@@ -1,2 +1,9 @@
 test/project.sublime-project
 test/project.sublime-workspace
+node_modules
+nginx-1.9.3/conf
+nginx-1.9.3/contrib
+nginx-1.9.3/docs
+nginx-1.9.3/logs
+nginx-1.9.3/temp
+nginx-1.9.3/nginx.exe

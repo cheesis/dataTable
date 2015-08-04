@@ -1,25 +1,65 @@
 var http = require('http');
-var fs = require('fs');
+var serverPort = 8090;
 
-var first_page_file_name = 'index.html';  // has to be utf-8
-var serverPort = 8080;
+var ConnectionPool = require('tedious-connection-pool');
+var Request = require('tedious').Request;
+
+var poolConfig = {
+    min: 1,
+    max: 2,
+    log: false
+};
+
+var connectionConfig = {
+  userName: 'test',
+  password: 'test',
+  server: 'localhost',
+  options: {
+          requestTimeout: 0, // wait indefinitely, default 15000ms
+          rowCollectionOnRequestCompletion: true // we need this so that the request callback has the result set
+          }
+};
+
+var pool = new ConnectionPool(poolConfig, connectionConfig);
+
+function runStatemment(sqlStatement, postData, response){
+  //acquire a connection
+  pool.acquire(function (err, connection) {
+      if (err)
+          console.error(err);
+
+      var request = new Request(sqlStatement, function(err, rowCount, rows) {
+          if (err)
+              console.error(err);
+
+          // debugger; //break when running in debug mode
+
+          var sqlResponse = {};
+          rows[0].forEach(function (v, i) {
+            sqlResponse[v.metadata.colName] = v.value;
+          });
+
+          console.log('we send this' + JSON.stringify([sqlResponse]));
+
+          response.end(JSON.stringify([sqlResponse])); //{oid:'1',vwapAvgPrice:50, vwapVolume:50000}
+
+          //release the connection back to the pool when finished
+          connection.release();
+      });
+
+      connection.execSql(request);
+  });
+
+  pool.on('error', function(err) {
+      console.error(err);
+  });
+}
+
+// end of SQL preparations
+
 
 function getDelay(){
   return parseInt(Math.random()*5000);
-}
-
-// get suffix polyfill; it's from ES6
-// https://developer.mozilla.org/en/docs/Web/JavaScript/Reference/Global_Objects/String/endsWith
-if (!String.prototype.endsWith) {
-  String.prototype.endsWith = function(searchString, position) {
-      var subjectString = this.toString();
-      if (position === undefined || position > subjectString.length) {
-        position = subjectString.length;
-      }
-      position -= searchString.length;
-      var lastIndex = subjectString.indexOf(searchString, position);
-      return lastIndex !== -1 && lastIndex === position;
-  };
 }
 
 http.createServer(function (request, response) {
@@ -43,11 +83,7 @@ http.createServer(function (request, response) {
         }, getDelay());
       }
       else if(request.url === "/vwapBM") {
-        console.log('returning vwap');
-        responseData.push({oid:postData.oid,vwapAvgPrice:50, vwapVolume:50000});
-        setTimeout(function() {
-          response.end(JSON.stringify(responseData));
-        }, getDelay());
+        runStatemment("select * from vwapData where oid = '1' waitfor delay '00:00:02'", postData, response);
       }
       else if(request.url === "/customBM") {
         console.log('returning custom');
@@ -109,28 +145,6 @@ http.createServer(function (request, response) {
         response.end('<!doctype html><html><head><title>404</title></head><body>404: Resource Not Found</body></html>');
       }
     });
-  } else {
-    // with nothing given, look for index.html
-    if (request.url == '/') {
-      request.url = '/index.html';
-    }
-
-    //don't read the first letter, it's '/', which will make node look at C:\
-    var html = fs.readFileSync(request.url.substr(1));
-
-    if (request.url.endsWith('html')) {
-      response.writeHead(200, {'Content-Type': 'text/html'});
-    } else if (request.url.endsWith('css')) {
-      response.writeHead(200, {'Content-Type': 'text/css'});
-    } else if (request.url.endsWith('js')) {
-      response.writeHead(200, {'Content-Type': 'text/javascript'});
-    } else if (request.url.endsWith('ico')) {
-        response.writeHead(200, {'Content-Type': 'image/x-icon'});
-      }
-    response.end(html);
-
-    // response.writeHead(405, 'Method Not Supported', {'Content-Type': 'text/html'});
-    // return response.end('<!doctype html><html><head><title>405</title></head><body>405: Method Not Supported</body></html>');
-  }
+  } 
 }).listen(serverPort);
 console.log('Server running at localhost:'+serverPort);
